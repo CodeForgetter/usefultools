@@ -121,9 +121,26 @@
   .list-item.current { box-shadow:0 0 0 2px var(--primary); }
 
   /* Import wizard */
-  #importWizard { padding:48px 16px 60px; max-width:560px; margin:0 auto; }
-  #importWizard h1 { text-align:center; font-size:22px; font-weight:700; margin:0 0 8px; }
-  #importWizard .subtitle { text-align:center; color:var(--muted); font-size:13px; margin-bottom:28px; }
+  #importWizard { padding:48px 16px 60px; max-width:1100px; margin:0 auto; }
+  #importWizard .landing-title { text-align:center; font-size:22px; font-weight:700; margin:0 0 20px; }
+  #importWizard .landing-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; }
+  @media (max-width:900px){ #importWizard .landing-grid { grid-template-columns:1fr; } }
+  #importWizard .wizard-col .col-heading { font-size:16px; font-weight:600; margin:0 0 4px; }
+  #importWizard .wizard-col .subtitle { text-align:left; color:var(--muted); font-size:13px; margin-bottom:16px; }
+  #importWizard .merge-file-list { margin:10px 0 12px; }
+  #importWizard .merge-file-item { padding:8px 12px; background:#fff; border:1px solid var(--border); border-radius:6px; font-size:12.5px; margin-bottom:6px; line-height:1.5; }
+  #importWizard .merge-file-item.ok { border-color:#86efac; color:#065f46; }
+  #importWizard .merge-file-item.err { border-color:#fca5a5; background:#fef2f2; color:#991b1b; }
+  #importWizard .merge-dup-panel { display:none; margin:12px 0; padding:12px 14px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; }
+  #importWizard .merge-dup-panel.visible { display:block; }
+  #importWizard .merge-dup-panel h4 { margin:0 0 10px; font-size:13px; font-weight:600; color:#92400e; }
+  #importWizard .dup-group { margin-bottom:10px; }
+  #importWizard .dup-group h5 { margin:0 0 6px; font-size:12.5px; font-weight:600; color:#374151; }
+  #importWizard .dup-row { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:12.5px; }
+  #importWizard .dup-row label { display:flex; align-items:center; gap:8px; cursor:pointer; flex:1; }
+  #importWizard .dup-row .pill-done { font-size:11px; padding:2px 6px; border-radius:4px; background:#dcfce7; color:#166534; }
+  #importWizard .dup-row .pill-todo { font-size:11px; padding:2px 6px; border-radius:4px; background:#f3f4f6; color:#6b7280; }
+  #importWizard #mergeErr .err { padding:8px 12px; background:#fef2f2; border:1px solid #fca5a5; border-radius:6px; color:#991b1b; font-size:12.5px; margin-top:8px; white-space:pre-wrap; }
   #importWizard .step { background:#fff; border:1px solid var(--border); border-radius:12px; padding:20px 22px; margin-bottom:14px; }
   #importWizard .step.current { border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
   #importWizard .step.done { border-color:#86efac; background:#f0fdf4; }
@@ -219,25 +236,47 @@
 </header>
 
 <section id="importWizard">
-  <h1>🏨 房型分词分类验收</h1>
-  <div class="subtitle">浏览器端验收平台 · 上传两份 xlsx 即可开始</div>
-  <div class="step current" id="step1">
-    <h3><span class="num"><span>1</span></span> 导入分词分类结构 Excel <span id="step1Reupload"></span></h3>
-    <div class="req">表头列必须包含：<code>大类</code>、<code>一级子类</code>、<code>二级子类</code>、<code>定义</code>、<code>举例</code>、<code>中文房型名称是否允许填写</code>、<code>对应运营审核大类</code>、<code>对应模型的category</code></div>
-    <label class="upload-btn" for="step1File" id="step1Btn">📂 选择文件…</label>
-    <input type="file" id="step1File" accept=".xlsx,.xls" style="display:none;">
-    <div id="step1Info"></div>
-    <div id="step1Err"></div>
+  <h1 class="landing-title">🏨 房型分词分类验收</h1>
+  <div class="landing-grid">
+    <div class="wizard-col wizard-col-left">
+      <div class="col-heading">新建验收</div>
+      <div class="subtitle">浏览器端验收平台 · 上传两份 xlsx 即可开始</div>
+      <div class="step current" id="step1">
+        <h3><span class="num"><span>1</span></span> 导入分词分类结构 Excel <span id="step1Reupload"></span></h3>
+        <div class="req">表头列必须包含：<code>大类</code>、<code>一级子类</code>、<code>二级子类</code>、<code>定义</code>、<code>举例</code>、<code>中文房型名称是否允许填写</code>、<code>对应运营审核大类</code>、<code>对应模型的category</code></div>
+        <label class="upload-btn" for="step1File" id="step1Btn">📂 选择文件…</label>
+        <input type="file" id="step1File" accept=".xlsx,.xls" style="display:none;">
+        <div id="step1Info"></div>
+        <div id="step1Err"></div>
+      </div>
+      <div class="step locked" id="step2">
+        <h3><span class="num"><span>2</span></span> 导入本次验收 Excel <span id="step2Reupload"></span></h3>
+        <div class="req">表头列必须包含：<code>roomName</code>、<code>phrase</code>、<code>category</code>、<code>defect</code>、<code>defectType</code></div>
+        <label class="upload-btn disabled" for="step2File" id="step2Btn">📂 选择文件…</label>
+        <input type="file" id="step2File" accept=".xlsx,.xls" style="display:none;" disabled>
+        <div id="step2Info"></div>
+        <div id="step2Err"></div>
+      </div>
+      <button class="continue-btn" id="continueBtn" disabled>继续 ▶</button>
+    </div>
+    <div class="wizard-col wizard-col-right">
+      <div class="col-heading">汇总验收 HTML</div>
+      <div class="subtitle">选择多个「📄 导出 HTML」验收快照，合并为一份（可处理重复房型）</div>
+      <div class="step current" id="mergeStep">
+        <h3><span class="num"><span>1</span></span> 选择快照文件</h3>
+        <div class="req">仅支持本工具导出的 HTML 快照（内含 <code>__DATA__</code> 与验收进度）。</div>
+        <label class="upload-btn" for="mergeFilesInput" id="mergeFilesBtn">📂 选择 HTML 文件（可多选）…</label>
+        <input type="file" id="mergeFilesInput" accept=".html,.htm" multiple style="display:none;">
+      </div>
+      <div id="mergeFileList" class="merge-file-list"></div>
+      <div id="mergeDupPanel" class="merge-dup-panel">
+        <h4>⚠ 重复房型名称 — 请勾选要保留的条目</h4>
+        <div id="mergeDupTable"></div>
+      </div>
+      <div id="mergeErr"></div>
+      <button class="continue-btn" id="mergeBtn" disabled>开始合并并打开 ▶</button>
+    </div>
   </div>
-  <div class="step locked" id="step2">
-    <h3><span class="num"><span>2</span></span> 导入本次验收 Excel <span id="step2Reupload"></span></h3>
-    <div class="req">表头列必须包含：<code>roomName</code>、<code>phrase</code>、<code>category</code>、<code>defect</code>、<code>defectType</code></div>
-    <label class="upload-btn disabled" for="step2File" id="step2Btn">📂 选择文件…</label>
-    <input type="file" id="step2File" accept=".xlsx,.xls" style="display:none;" disabled>
-    <div id="step2Info"></div>
-    <div id="step2Err"></div>
-  </div>
-  <button class="continue-btn" id="continueBtn" disabled>继续 ▶</button>
 </section>
 
 <main id="cards" style="display:none;"></main>
@@ -378,16 +417,23 @@ function restoreSession(){
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
-  if (!restoreSession()) initImportWizard();
+  if (!restoreSession()) showLandingPage();
 });
 
-function initImportWizard(){
+function showLandingPage(){
   document.getElementById('importWizard').style.display = 'block';
   document.getElementById('toolbar').style.display = 'none';
   document.getElementById('cards').style.display = 'none';
   document.getElementById('listView').classList.remove('active');
   document.getElementById('statsView').classList.remove('active');
+  initImportWizard();
+  initMergeWizard();
+}
 
+let _importWizardHandlersBound = false;
+let _mergeWizardHandlersBound = false;
+
+function initImportWizard(){
   const step1 = document.getElementById('step1');
   const step2 = document.getElementById('step2');
   const step1Btn = document.getElementById('step1Btn');
@@ -412,8 +458,11 @@ function initImportWizard(){
   step2Btn.classList.add('disabled');
   step2File.disabled = true;
   continueBtn.disabled = true;
+  step1File.value = '';
+  step2File.value = '';
 
-  // Note: file inputs are triggered by <label for=…>, no JS click() needed
+  if (_importWizardHandlersBound) return;
+  _importWizardHandlersBound = true;
 
   step1File.onchange = async (e) => {
     step1Err.innerHTML = ''; step1Info.innerHTML = '';
@@ -520,8 +569,292 @@ window.resetAndReimport = function(){
   DEFECT_FALLBACK = null;
   RAW_DATA_ROWS = [];
   state = {};
-  initImportWizard();
+  showLandingPage();
 };
+
+// ====== HTML snapshot merge ======
+let mergeParsedList = [];
+
+function isRoomDoneWithState(room, st){
+  const rs = st[ROOM_KEY_PREFIX + room.id] || {};
+  if (rs.phraseWrong) {
+    const hasEdit = (rs.newTokens && rs.newTokens.length > 0) || (rs.deletedTokenIdx && rs.deletedTokenIdx.length > 0);
+    if (hasEdit) return true;
+  }
+  return room.tokens.every(t => {
+    const s = st[room.id + '__' + t.i];
+    return s && (s.mark === 'ok' || s.mark === 'ng');
+  });
+}
+
+async function parseSnapshotHtmlFile(file){
+  const text = await file.text();
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  const dataRaw = doc.getElementById('__DATA__')?.textContent?.trim();
+  const stateRaw = doc.getElementById('__STATE_SNAPSHOT__')?.textContent?.trim();
+  if (!dataRaw) throw new Error('不是有效的验收快照（缺少 __DATA__）');
+  const data = JSON.parse(dataRaw);
+  let snap = {};
+  if (stateRaw) {
+    try { snap = JSON.parse(stateRaw); } catch(e) { throw new Error('验收进度解析失败'); }
+  }
+  if (!data.rooms?.length) throw new Error('快照中无房型数据');
+  return { fileName: file.name, data, state: snap };
+}
+
+function remapRoomState(oldId, newId, srcState, dstState){
+  const rk = ROOM_KEY_PREFIX + oldId;
+  if (srcState[rk]) dstState[ROOM_KEY_PREFIX + newId] = JSON.parse(JSON.stringify(srcState[rk]));
+  const prefix = oldId + '__';
+  for (const k of Object.keys(srcState)) {
+    if (k.startsWith(prefix)) {
+      dstState[newId + '__' + k.slice(prefix.length)] = JSON.parse(JSON.stringify(srcState[k]));
+    }
+  }
+}
+
+function collectMergeCandidates(okSnaps){
+  const out = [];
+  okSnaps.forEach((snap, fileIndex) => {
+    snap.data.rooms.forEach((room, roomIndex) => {
+      out.push({
+        key: fileIndex + ':' + room.id,
+        fileIndex,
+        roomIndex,
+        fileName: snap.fileName,
+        room,
+        state: snap.state,
+      });
+    });
+  });
+  return out;
+}
+
+function buildDuplicateGroups(candidates){
+  const byName = new Map();
+  for (const c of candidates) {
+    if (!byName.has(c.room.name)) byName.set(c.room.name, []);
+    byName.get(c.room.name).push(c);
+  }
+  const groups = [];
+  for (const [name, items] of byName) {
+    if (items.length > 1) groups.push({ name, items });
+  }
+  return groups;
+}
+
+function validateDupSelections(dupGroups){
+  for (const g of dupGroups) {
+    const anyChecked = g.items.some(it => {
+      const cb = document.getElementById('dup_' + it.key);
+      return cb && cb.checked;
+    });
+    if (!anyChecked) return g.name;
+  }
+  return null;
+}
+
+function getSelectedMergeKeys(dupGroups, candidates){
+  const dupKeys = new Set();
+  for (const g of dupGroups) {
+    for (const it of g.items) {
+      const cb = document.getElementById('dup_' + it.key);
+      if (cb && cb.checked) dupKeys.add(it.key);
+    }
+  }
+  const dupKeySet = new Set();
+  for (const g of dupGroups) g.items.forEach(it => dupKeySet.add(it.key));
+  return candidates.filter(c => {
+    if (!dupKeySet.has(c.key)) return true;
+    return dupKeys.has(c.key);
+  });
+}
+
+function checkTaxonomyDiffAcrossSnapshots(okSnaps){
+  if (okSnaps.length < 2) return;
+  const baseKeys = new Set(Object.keys(okSnaps[0].data.taxonomy || {}));
+  const diffs = [];
+  for (let i = 1; i < okSnaps.length; i++) {
+    const keys = new Set(Object.keys(okSnaps[i].data.taxonomy || {}));
+    const onlyInBase = [...baseKeys].filter(k => !keys.has(k));
+    const onlyInOther = [...keys].filter(k => !baseKeys.has(k));
+    if (onlyInBase.length || onlyInOther.length) {
+      diffs.push(`「${okSnaps[i].fileName}」与首份快照分类结构不一致`);
+    }
+  }
+  if (diffs.length) alert('分类结构差异提示（不阻断合并）：\n' + diffs.join('\n'));
+}
+
+async function mergeSnapshots(selectedCandidates, baseTaxonomy, baseDefectByCat){
+  const roomsOut = [];
+  const mergedState = {};
+  const roomNames = [];
+  let nextIdx = 0;
+  for (const c of selectedCandidates) {
+    const newId = 'r' + String(nextIdx).padStart(4, '0');
+    nextIdx++;
+    const roomCopy = JSON.parse(JSON.stringify(c.room));
+    roomCopy.id = newId;
+    roomsOut.push(roomCopy);
+    roomNames.push(c.room.name);
+    remapRoomState(c.room.id, newId, c.state, mergedState);
+  }
+  const payloadHash = await sha1Hex('merge|' + roomNames.join('|'));
+  const payload = {
+    generatedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    rooms: roomsOut,
+    payloadHash,
+    taxonomy: baseTaxonomy,
+    defectByCat: baseDefectByCat,
+  };
+  return { payload, mergedState };
+}
+
+async function applyMergedPayload(payload, mergedState){
+  DATA = payload;
+  state = mergedState;
+  TAXO_BY_CAT = DATA.taxonomy || {};
+  DEFECT_BY_CAT = DATA.defectByCat || {};
+  DEFECT_FALLBACK = null;
+  for (const e of Object.values(TAXO_BY_CAT)) {
+    if (e && e['大类'] && DEFECT_GROUP_REGEX.test(e['大类']) && !DEFECT_FALLBACK) DEFECT_FALLBACK = e;
+  }
+  localStorage.setItem(HASH_KEY, DATA.payloadHash);
+  localStorage.setItem(STATE_KEY, JSON.stringify(state));
+  localStorage.removeItem(IDX_KEY);
+  persistImportedDataset();
+}
+
+function renderMergeFileList(){
+  const listEl = document.getElementById('mergeFileList');
+  const mergeBtn = document.getElementById('mergeBtn');
+  if (!listEl) return;
+  const okCount = mergeParsedList.filter(r => r.ok).length;
+  if (!mergeParsedList.length) {
+    listEl.innerHTML = '';
+    if (mergeBtn) mergeBtn.disabled = true;
+    return;
+  }
+  listEl.innerHTML = mergeParsedList.map(r => {
+    if (r.ok) {
+      return `<div class="merge-file-item ok">✅ <b>${escapeHtml(r.fileName)}</b> — ${r.data.rooms.length} 个房型</div>`;
+    }
+    return `<div class="merge-file-item err">❌ <b>${escapeHtml(r.fileName)}</b> — ${escapeHtml(r.error)}</div>`;
+  }).join('');
+  if (mergeBtn) mergeBtn.disabled = okCount < 1;
+}
+
+function renderMergeDupPanel(){
+  const panel = document.getElementById('mergeDupPanel');
+  const table = document.getElementById('mergeDupTable');
+  if (!panel || !table) return;
+  const okSnaps = mergeParsedList.filter(r => r.ok);
+  const candidates = collectMergeCandidates(okSnaps);
+  const dupGroups = buildDuplicateGroups(candidates);
+  if (!dupGroups.length) {
+    panel.classList.remove('visible');
+    table.innerHTML = '';
+    return;
+  }
+  panel.classList.add('visible');
+  let firstSeen = new Set();
+  table.innerHTML = dupGroups.map(g => {
+    const rows = g.items.map(it => {
+      const isFirst = !firstSeen.has(g.name);
+      if (isFirst) firstSeen.add(g.name);
+      const done = isRoomDoneWithState(it.room, it.state);
+      const status = done ? '<span class="pill-done">已完成</span>' : '<span class="pill-todo">未完成</span>';
+      return `<div class="dup-row">
+        <label><input type="checkbox" id="dup_${it.key}" data-key="${escapeHtml(it.key)}" ${isFirst ? 'checked' : ''}>
+        <span>${escapeHtml(it.fileName)} · ${it.room.tokens.length} 个分词 ${status}</span></label>
+      </div>`;
+    }).join('');
+    return `<div class="dup-group"><h5>${escapeHtml(g.name)}</h5>${rows}</div>`;
+  }).join('');
+}
+
+function initMergeWizard(){
+  const mergeInput = document.getElementById('mergeFilesInput');
+  const mergeFileList = document.getElementById('mergeFileList');
+  const mergeDupPanel = document.getElementById('mergeDupPanel');
+  const mergeDupTable = document.getElementById('mergeDupTable');
+  const mergeErr = document.getElementById('mergeErr');
+  const mergeBtn = document.getElementById('mergeBtn');
+  if (!mergeInput) return;
+
+  mergeParsedList = [];
+  if (mergeFileList) mergeFileList.innerHTML = '';
+  if (mergeDupPanel) mergeDupPanel.classList.remove('visible');
+  if (mergeDupTable) mergeDupTable.innerHTML = '';
+  if (mergeErr) mergeErr.innerHTML = '';
+  if (mergeBtn) {
+    mergeBtn.disabled = true;
+    mergeBtn.textContent = '开始合并并打开 ▶';
+  }
+  mergeInput.value = '';
+
+  if (_mergeWizardHandlersBound) return;
+  _mergeWizardHandlersBound = true;
+
+  mergeInput.onchange = async (e) => {
+    if (mergeErr) mergeErr.innerHTML = '';
+    const files = Array.from(e.target.files || []);
+    if (!files.length) {
+      mergeParsedList = [];
+      renderMergeFileList();
+      renderMergeDupPanel();
+      return;
+    }
+    mergeParsedList = [];
+    for (const file of files) {
+      try {
+        const parsed = await parseSnapshotHtmlFile(file);
+        mergeParsedList.push({ ok: true, fileName: file.name, data: parsed.data, state: parsed.state });
+      } catch(err) {
+        mergeParsedList.push({ ok: false, fileName: file.name, error: err.message });
+      }
+    }
+    renderMergeFileList();
+    renderMergeDupPanel();
+    mergeInput.value = '';
+  };
+
+  mergeBtn.onclick = async () => {
+    const okSnaps = mergeParsedList.filter(r => r.ok);
+    if (!okSnaps.length) {
+      if (mergeErr) mergeErr.innerHTML = '<div class="err">请先选择至少一个有效快照。</div>';
+      return;
+    }
+    const candidates = collectMergeCandidates(okSnaps);
+    const dupGroups = buildDuplicateGroups(candidates);
+    const blocked = validateDupSelections(dupGroups);
+    if (blocked) {
+      if (mergeErr) mergeErr.innerHTML = `<div class="err">房型「${escapeHtml(blocked)}」至少需勾选一条保留。</div>`;
+      return;
+    }
+    if (mergeErr) mergeErr.innerHTML = '';
+    const selected = getSelectedMergeKeys(dupGroups, candidates);
+    if (!selected.length) {
+      if (mergeErr) mergeErr.innerHTML = '<div class="err">未选择任何房型条目。</div>';
+      return;
+    }
+    checkTaxonomyDiffAcrossSnapshots(okSnaps);
+    mergeBtn.disabled = true;
+    mergeBtn.textContent = '合并中…';
+    try {
+      const base = okSnaps[0].data;
+      const { payload, mergedState } = await mergeSnapshots(selected, base.taxonomy || {}, base.defectByCat || {});
+      await applyMergedPayload(payload, mergedState);
+      const html = buildSnapshotHtmlString(payload, mergedState);
+      downloadSnapshotHtml(html, `房型分词验收_快照_合并_${timestampSlug()}.html`);
+      enterBoard();
+    } catch(err) {
+      if (mergeErr) mergeErr.innerHTML = `<div class="err">❌ ${escapeHtml(err.message)}</div>`;
+      mergeBtn.disabled = false;
+      mergeBtn.textContent = '开始合并并打开 ▶';
+    }
+  };
+}
 
 function parseTaxonomyXlsx(arrayBuf){
   const wb = XLSX.read(arrayBuf, {type:'array'});
@@ -1545,26 +1878,14 @@ function initBoard(){
     XLSX.writeFile(wb, `房型分词验收_${timestampSlug()}.xlsx`);
   };
   window.exportHtml = function(){
-    // Inject DATA + taxonomy + state into a clone, so the snapshot can re-open without re-uploading
-    const docEl = document.documentElement.cloneNode(true);
-    const dataNode = docEl.querySelector('#__DATA__');
-    if (dataNode) dataNode.textContent = JSON.stringify({
+    const payload = {
       generatedAt: DATA.generatedAt,
       rooms: DATA.rooms,
       payloadHash: DATA.payloadHash,
       taxonomy: TAXO_BY_CAT,
       defectByCat: DEFECT_BY_CAT,
-    });
-    const snap = docEl.querySelector('#__STATE_SNAPSHOT__');
-    if (snap) snap.textContent = JSON.stringify(state);
-    const html = '<!doctype html>\n' + docEl.outerHTML;
-    const blob = new Blob([html], {type:'text/html;charset=utf-8'});
-    const fname = `房型分词验收_快照_${timestampSlug()}.html`;
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = fname;
-    a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+    };
+    downloadSnapshotHtml(buildSnapshotHtmlString(payload, state), `房型分词验收_快照_${timestampSlug()}.html`);
   };
 
   renderAll();
@@ -1572,6 +1893,32 @@ function initBoard(){
 
 // ----- Helpers -----
 function escapeHtml(s){ if (s==null) return ''; return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
+
+function buildSnapshotHtmlString(dataPayload, statePayload){
+  const docEl = document.documentElement.cloneNode(true);
+  const dataNode = docEl.querySelector('#__DATA__');
+  if (dataNode) {
+    dataNode.textContent = JSON.stringify({
+      generatedAt: dataPayload.generatedAt,
+      rooms: dataPayload.rooms,
+      payloadHash: dataPayload.payloadHash,
+      taxonomy: dataPayload.taxonomy || {},
+      defectByCat: dataPayload.defectByCat || {},
+    });
+  }
+  const snap = docEl.querySelector('#__STATE_SNAPSHOT__');
+  if (snap) snap.textContent = JSON.stringify(statePayload);
+  return '<!doctype html>\n' + docEl.outerHTML;
+}
+
+function downloadSnapshotHtml(html, fname){
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fname;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
 </script>
 </body>
 </html>
