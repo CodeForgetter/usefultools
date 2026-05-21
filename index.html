@@ -273,20 +273,46 @@
 <script id="__DATA__" type="application/json"></script>
 <script id="__STATE_SNAPSHOT__" type="application/json"></script>
 <script>
-// ====== Module-level globals ======
+// ====== Module-level state ======
 let DATA = null;
 let TAXO_ENTRIES = []; // raw taxonomy entries from uploaded structure xlsx
-let TAXO_BY_CAT = {};  // {对应模型的category: entry}
-let DEFECT_BY_CAT = {};// {category: entry from 大类=缺陷信息}
-let DEFECT_FALLBACK = null; // any 大类=缺陷信息 entry, used if specific cat has no match in defect set
+let TAXO_BY_CAT = {};  // {category → taxonomy entry}
+let DEFECT_BY_CAT = {};// {category → entry whose 大类 matches DEFECT_GROUP_REGEX}
+let DEFECT_FALLBACK = null; // first 大类=缺陷信息 entry (used when no specific match)
 let RAW_DATA_ROWS = []; // parsed verification rows {roomName, phrase, category, defect, defectType}
+let state = {};
+
+// ====== Constants ======
 const STATE_KEY = 'roomTokenReview.v1';
 const HASH_KEY = 'roomTokenReview.payloadHash';
 const IDX_KEY = 'roomTokenReview.curIdx';
 const PAYLOAD_KEY = 'roomTokenReview.payload';
 const TAXO_KEY = 'roomTokenReview.taxoIndex';
-let state = {};
+const ROOM_KEY_PREFIX = 'room__';            // state[ROOM_KEY_PREFIX + roomId] = room-level state
+const SAVE_DEBOUNCE_MS = 200;                // localStorage write debounce
+const SOFT_DELETED_LABEL = '软删除';          // shown in stats / export for soft-deleted tokens
+const ADDED_TOKEN_LABEL = '新增';             // shown in export for user-added tokens
+const DEFECT_DISPLAY_NAME = '房型缺陷';       // user-facing label for the defect category
+const DEFECT_RAW_KEY = 'defect';             // literal placeholder used in taxonomy xlsx category column
+const DEFECT_GROUP_REGEX = /缺陷/;           // matches entries belonging to the 缺陷信息 大类
+const UNCATEGORIZED = '未分类';
+
 try { state = JSON.parse(localStorage.getItem(STATE_KEY) || '{}'); } catch(e){ state = {}; }
+
+// ====== Helpers: room-level state ======
+function getRoomState(roomId){ return state[ROOM_KEY_PREFIX + roomId] || null; }
+function ensureRoomState(roomId){
+  const k = ROOM_KEY_PREFIX + roomId;
+  if (!state[k]) state[k] = {};
+  return state[k];
+}
+
+// ====== Helpers: misc ======
+function pad2(n){ return String(n).padStart(2, '0'); }
+function timestampSlug(){
+  const d = new Date();
+  return `${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}`;
+}
 
 // ====== Hash ======
 async function sha1Hex(str){
@@ -296,14 +322,13 @@ async function sha1Hex(str){
 }
 
 // ====== Boot ======
-window.addEventListener('DOMContentLoaded', async () => {
-  // Snapshot mode: prior exported HTML embeds state under __STATE_SNAPSHOT__ + DATA already present
-  const dataEl = document.getElementById('__DATA__');
-  const inlineRaw = (dataEl ? (dataEl.textContent||'') : '').trim();
-  let inlineParsed = null;
-  if (inlineRaw && inlineRaw !== '') {
-    try { inlineParsed = JSON.parse(inlineRaw); } catch(e){ console.warn('embedded DATA parse failed', e); }
-  }
+// Try to restore a session, in priority order:
+//   1. __STATE_SNAPSHOT__ inline state (always merged in if present)
+//   2. inline __DATA__ payload (snapshot HTML exports)
+//   3. localStorage payload + taxoIndex (normal session resume)
+// Returns true if a session was restored (board already entered); false otherwise.
+function restoreSession(){
+  // Pull and parse inline __STATE_SNAPSHOT__ state if present (always merged)
   const snapTxt = (document.getElementById('__STATE_SNAPSHOT__').textContent||'').trim();
   if (snapTxt) {
     try {
@@ -314,30 +339,46 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
     } catch(e) { console.warn('snapshot parse failed', e); }
   }
-  if (inlineParsed && inlineParsed.rooms && inlineParsed.rooms.length) {
-    DATA = inlineParsed;
-    if (DATA.taxonomy) TAXO_BY_CAT = DATA.taxonomy;
-    if (DATA.defectByCat) DEFECT_BY_CAT = DATA.defectByCat;
-    enterBoard();
-    return;
+
+  // 1. Inline payload (snapshot HTML)
+  const dataEl = document.getElementById('__DATA__');
+  const inlineRaw = (dataEl ? (dataEl.textContent||'') : '').trim();
+  if (inlineRaw && inlineRaw !== '') {
+    try {
+      const parsed = JSON.parse(inlineRaw);
+      if (parsed && parsed.rooms && parsed.rooms.length) {
+        DATA = parsed;
+        if (DATA.taxonomy) TAXO_BY_CAT = DATA.taxonomy;
+        if (DATA.defectByCat) DEFECT_BY_CAT = DATA.defectByCat;
+        enterBoard();
+        return true;
+      }
+    } catch(e) { console.warn('embedded DATA parse failed', e); }
   }
-  // Restore from localStorage if a previous import exists
+
+  // 2. localStorage payload (resume from previous browser session)
   try {
     const persistedPayload = localStorage.getItem(PAYLOAD_KEY);
     const persistedTaxo = localStorage.getItem(TAXO_KEY);
     if (persistedPayload && persistedTaxo) {
-      DATA = JSON.parse(persistedPayload);
+      const payload = JSON.parse(persistedPayload);
       const taxoBlob = JSON.parse(persistedTaxo);
-      TAXO_BY_CAT = taxoBlob.taxoByCat || {};
-      DEFECT_BY_CAT = taxoBlob.defectByCat || {};
-      DEFECT_FALLBACK = taxoBlob.defectFallback || null;
-      if (DATA && DATA.rooms && DATA.rooms.length) {
+      if (payload && payload.rooms && payload.rooms.length) {
+        DATA = payload;
+        TAXO_BY_CAT = taxoBlob.taxoByCat || {};
+        DEFECT_BY_CAT = taxoBlob.defectByCat || {};
+        DEFECT_FALLBACK = taxoBlob.defectFallback || null;
         enterBoard();
-        return;
+        return true;
       }
     }
   } catch(e) { console.warn('restore persisted import failed', e); }
-  initImportWizard();
+
+  return false;
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  if (!restoreSession()) initImportWizard();
 });
 
 function initImportWizard(){
@@ -547,11 +588,11 @@ function buildTaxoIndices(){
   DEFECT_BY_CAT = {};
   DEFECT_FALLBACK = null;
   for (const e of TAXO_ENTRIES) {
-    // The taxonomy file uses the literal "defect" as a stand-in category for the
-    // 缺陷信息 row. In the UI we show it as "房型缺陷" to match the badge wording.
-    if (e.category === 'defect') e.category = '房型缺陷';
+    // Taxonomy xlsx uses DEFECT_RAW_KEY ("defect") as the placeholder category for the
+    // 缺陷信息 row; show it as DEFECT_DISPLAY_NAME ("房型缺陷") in the UI.
+    if (e.category === DEFECT_RAW_KEY) e.category = DEFECT_DISPLAY_NAME;
     if (e.category) TAXO_BY_CAT[e.category] = e;
-    if (e['大类'] && /缺陷/.test(e['大类'])) {
+    if (e['大类'] && DEFECT_GROUP_REGEX.test(e['大类'])) {
       if (!DEFECT_FALLBACK) DEFECT_FALLBACK = e;
       if (e.category) DEFECT_BY_CAT[e.category] = e;
     }
@@ -610,7 +651,7 @@ async function buildPayloadFromRaw(rows, hashSeed){
     const tokens = byRoom.get(name).map((r, i) => ({
       i,
       phrase: r.phrase,
-      category: r.category || '未分类',
+      category: r.category || UNCATEGORIZED,
       defect: !!r.defect,
       defectType: r.defectType,
     }));
@@ -657,15 +698,10 @@ function initBoard(){
   function catColor(cat){ const h = Math.abs(hash(cat))%360; return `hsl(${h} 55% 42%)`; }
   function catBgSoft(cat){ const h = Math.abs(hash(cat))%360; return `hsl(${h} 75% 90%)`; }
 
-  // Build suggest options from category set
-  const suggestOpts = [];
-  const seen = new Set();
-  DATA.rooms.forEach(r => r.tokens.forEach(t => {
-    const cat = t.defect ? (t.category + '-房型缺陷') : t.category;
-    if (!seen.has(cat)) { seen.add(cat); suggestOpts.push(cat); }
-  }));
-  // Also add all known taxonomy categories so user can pick from a complete list
-  Object.keys(TAXO_BY_CAT||{}).forEach(c => { if (!seen.has(c)) { seen.add(c); suggestOpts.push(c); }});
+  // Suggested-classification options come solely from the taxonomy xlsx's "对应模型的category"
+  // column (TAXO_BY_CAT keys, deduplicated; the literal "defect" was already renamed to
+  // DEFECT_DISPLAY_NAME by buildTaxoIndices).
+  const suggestOpts = Object.keys(TAXO_BY_CAT || {});
 
   // current room index
   let curIdx = 0;
@@ -677,11 +713,11 @@ function initBoard(){
   let saveTimer;
   function saveState(){
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(()=>{ localStorage.setItem(STATE_KEY, JSON.stringify(state)); }, 200);
+    saveTimer = setTimeout(()=>{ localStorage.setItem(STATE_KEY, JSON.stringify(state)); }, SAVE_DEBOUNCE_MS);
   }
 
   function isRoomDone(room){
-    const rs = state['room__'+room.id] || {};
+    const rs = getRoomState(room.id) || {};
     if (rs.phraseWrong) {
       const hasEdit = (rs.newTokens && rs.newTokens.length>0) || (rs.deletedTokenIdx && rs.deletedTokenIdx.length>0);
       if (hasEdit) return true;
@@ -697,7 +733,7 @@ function initBoard(){
   window._catColor = catColor;
   window._catBgSoft = catBgSoft;
 
-  function displayCat(t){ return t.defect ? (t.category + '-房型缺陷') : t.category; }
+  function displayCat(t){ return t.defect ? (t.category + '-' + DEFECT_DISPLAY_NAME) : t.category; }
   function tooltipEntryFor(t){
     if (t.defect) return DEFECT_BY_CAT[t.category] || DEFECT_FALLBACK || TAXO_BY_CAT[t.category] || null;
     return TAXO_BY_CAT[t.category] || null;
@@ -844,7 +880,7 @@ function initBoard(){
     meta.textContent = `房型 ID ${room.id} · 共 ${room.tokens.length} 个分词`;
     card.appendChild(meta);
 
-    const rs = state['room__'+room.id] || {};
+    const rs = getRoomState(room.id) || {};
     const flag = document.createElement('div');
     flag.className = 'room-flag' + (rs.phraseWrong ? ' on' : '');
     flag.innerHTML = `
@@ -855,7 +891,7 @@ function initBoard(){
     `;
     if (rs.phraseWrong) card.classList.add('phrase-wrong');
     flag.querySelector('.pw-toggle').onchange = (e)=>{
-      const cur = state['room__'+room.id] || (state['room__'+room.id]={});
+      const cur = ensureRoomState(room.id);
       cur.phraseWrong = !!e.target.checked;
       saveState();
       flag.classList.toggle('on', cur.phraseWrong);
@@ -879,17 +915,17 @@ function initBoard(){
     const ntList = ntArea.querySelector('.nt-list');
     const ntEmpty = ntArea.querySelector('.nt-empty');
     function refreshNtEmpty(){
-      const has = (state['room__'+room.id]||{}).newTokens && (state['room__'+room.id].newTokens.length>0);
+      const has = (getRoomState(room.id)||{}).newTokens && (getRoomState(room.id).newTokens.length>0);
       ntEmpty.style.display = has ? 'none' : 'block';
     }
     function renderNtList(){
       ntList.innerHTML = '';
-      const arr = ((state['room__'+room.id]||{}).newTokens) || [];
+      const arr = ((getRoomState(room.id)||{}).newTokens) || [];
       arr.forEach((nt, i) => ntList.appendChild(renderNewTokenRow(room, i)));
       refreshNtEmpty();
     }
     ntArea.querySelector('.add-nt-btn').onclick = ()=>{
-      const cur = state['room__'+room.id] || (state['room__'+room.id]={});
+      const cur = ensureRoomState(room.id);
       cur.newTokens = cur.newTokens || [];
       cur.newTokens.push({phrase:'', category:'', remark:''});
       saveState();
@@ -964,12 +1000,12 @@ function initBoard(){
   }
 
   function isTokenDeleted(roomId, ti){
-    const rs = state['room__'+roomId];
+    const rs = getRoomState(roomId);
     if (!rs || !rs.deletedTokenIdx) return false;
     return rs.deletedTokenIdx.indexOf(ti) >= 0;
   }
   function setTokenDeleted(roomId, ti, on){
-    const cur = state['room__'+roomId] || (state['room__'+roomId]={});
+    const cur = ensureRoomState(roomId);
     cur.deletedTokenIdx = cur.deletedTokenIdx || [];
     const i = cur.deletedTokenIdx.indexOf(ti);
     if (on && i < 0) cur.deletedTokenIdx.push(ti);
@@ -1066,7 +1102,7 @@ function initBoard(){
   }
 
   function renderNewTokenRow(room, ntIdx){
-    const cur = state['room__'+room.id] || (state['room__'+room.id]={});
+    const cur = ensureRoomState(room.id);
     cur.newTokens = cur.newTokens || [];
     const nt = cur.newTokens[ntIdx] || {phrase:'', category:'', remark:''};
     const row = document.createElement('div');
@@ -1086,19 +1122,19 @@ function initBoard(){
     const removeEl = row.querySelector('.nt-remove');
     let curCat = nt.category || '';
     mountCombo(row.querySelector('.new-cat-host'), suggestOpts, curCat, (val)=>{
-      const arr = state['room__'+room.id].newTokens;
+      const arr = getRoomState(room.id).newTokens;
       arr[ntIdx].category = val || '';
       curCat = val || '';
       colorEl.style.background = val ? catColor(val) : '#e5e7eb';
       saveState();
     }, '搜索分类…');
     phraseEl.oninput = (e)=>{
-      const arr = state['room__'+room.id].newTokens;
+      const arr = getRoomState(room.id).newTokens;
       arr[ntIdx].phrase = e.target.value;
       saveState();
     };
     remarkEl.oninput = (e)=>{
-      const arr = state['room__'+room.id].newTokens;
+      const arr = getRoomState(room.id).newTokens;
       arr[ntIdx].remark = e.target.value;
       saveState();
     };
@@ -1109,26 +1145,13 @@ function initBoard(){
       toggleTip(infoEl, curCat, TAXO_BY_CAT[curCat] || null);
     };
     removeEl.onclick = ()=>{
-      const arr = state['room__'+room.id].newTokens;
+      const arr = getRoomState(room.id).newTokens;
       arr.splice(ntIdx, 1);
       saveState();
       const card = document.querySelector(`[data-id="${room.id}"]`);
       if (card && card._renderNtList) card._renderNtList();
     };
     return row;
-  }
-
-  function setMark(room, ti, mark, row){
-    const k = getKey(room.id, ti);
-    const cur = state[k] || (state[k]={});
-    cur.mark = mark;
-    saveState();
-    row.classList.remove('ok','ng');
-    if (mark==='ok') row.classList.add('ok');
-    if (mark==='ng') row.classList.add('ng');
-    row.querySelector('.ok-btn').classList.toggle('active', mark==='ok');
-    row.querySelector('.ng-btn').classList.toggle('active', mark==='ng');
-    updateCounts();
   }
 
   function updateCounts(){
@@ -1212,7 +1235,6 @@ function initBoard(){
   window.markCurrentAllOk = function(){
     const room = DATA.rooms[curIdx];
     if (!room) return;
-    if (!confirm(`将"${room.name}"的所有未审分词标记为正确？`)) return;
     room.tokens.forEach(t=>{
       const k = getKey(room.id, t.i);
       const cur = state[k] || (state[k]={});
@@ -1249,7 +1271,7 @@ function initBoard(){
         if (!hit) return;
       }
       shown++;
-      const rs = state['room__'+room.id] || {};
+      const rs = getRoomState(room.id) || {};
       const totalTok = room.tokens.length;
       let okN = 0, ngN = 0;
       room.tokens.forEach(t => {
@@ -1318,7 +1340,7 @@ function initBoard(){
       return byPhrase.get(p);
     }
     DATA.rooms.forEach(room => {
-      const rs = state['room__'+room.id] || {};
+      const rs = getRoomState(room.id) || {};
       const deletedSet = new Set(rs.deletedTokenIdx || []);
       room.tokens.forEach(t => {
         const e = ensure(t.phrase);
@@ -1327,7 +1349,7 @@ function initBoard(){
         e.total += 1;
         const s = state[getKey(room.id, t.i)] || {};
         if (deletedSet.has(t.i)) {
-          e.manual['软删除'] = (e.manual['软删除']||0) + 1;
+          e.manual[SOFT_DELETED_LABEL] = (e.manual[SOFT_DELETED_LABEL]||0) + 1;
         } else if (s.mark === 'ok') {
           e.manual[modelCat] = (e.manual[modelCat]||0) + 1;
         } else if (s.mark === 'ng' && s.suggested) {
@@ -1350,10 +1372,10 @@ function initBoard(){
   function isMultiCat(stats){ return Object.keys(stats.model).length >= 2; }
   function isWrong(stats){
     // wrong if any manual category differs from any model category, OR has 软删除, OR phrase has no model entries (means added new)
-    if (stats.manual['软删除']) return true;
+    if (stats.manual[SOFT_DELETED_LABEL]) return true;
     const modelCats = new Set(Object.keys(stats.model));
     for (const c of Object.keys(stats.manual)) {
-      if (c === '软删除') continue;
+      if (c === SOFT_DELETED_LABEL) continue;
       if (!modelCats.has(c)) return true;
     }
     return false;
@@ -1365,7 +1387,7 @@ function initBoard(){
     let roomTotal = DATA.rooms.length, roomCatAllOk = 0, roomCatAnyNg = 0;
     let roomPhraseWrong = 0, roomPhraseAllOk = 0;
     DATA.rooms.forEach(room => {
-      const rs = state['room__'+room.id] || {};
+      const rs = getRoomState(room.id) || {};
       const deletedSet = new Set(rs.deletedTokenIdx || []);
       let allTokenOk = true, anyTokenNg = false, allReviewed = true;
       room.tokens.forEach(t => {
@@ -1414,8 +1436,8 @@ function initBoard(){
       const entries = Object.entries(map).sort((a,b)=>b[1]-a[1]);
       if (!entries.length) return '<span style="color:#9ca3af;">—</span>';
       return entries.map(([cat, cnt]) => {
-        const cls = cat==='软删除' ? 'cat-tag deleted' : 'cat-tag';
-        const bg = cat==='软删除' ? '#9ca3af' : catColor(cat);
+        const cls = cat===SOFT_DELETED_LABEL ? 'cat-tag deleted' : 'cat-tag';
+        const bg = cat===SOFT_DELETED_LABEL ? '#9ca3af' : catColor(cat);
         return `<span class="${cls}" style="background:${bg};">${escapeHtml(cat)} ${cnt}次</span>`;
       }).join('');
     }
@@ -1462,7 +1484,7 @@ function initBoard(){
   window.exportXlsx = function(){
     const rows = [];
     DATA.rooms.forEach(room => {
-      const rs = state['room__'+room.id] || {};
+      const rs = getRoomState(room.id) || {};
       const deletedSet = new Set(rs.deletedTokenIdx || []);
       const newTokens = rs.newTokens || [];
       const items = [];
@@ -1510,7 +1532,7 @@ function initBoard(){
             '备注': nt.remark || '',
             '是否缺陷': '',
             '缺陷类型': '',
-            '分词是否正确': '新增',
+            '分词是否正确': ADDED_TOKEN_LABEL,
             '分词问题备注': aggregatedRemark,
           });
         }
@@ -1520,10 +1542,7 @@ function initBoard(){
     ws['!cols'] = [{wch:24},{wch:14},{wch:14},{wch:10},{wch:14},{wch:24},{wch:8},{wch:12},{wch:14},{wch:30}];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '验收结果');
-    const ts = new Date();
-    const pad = n=>String(n).padStart(2,'0');
-    const name = `房型分词验收_${ts.getFullYear()}${pad(ts.getMonth()+1)}${pad(ts.getDate())}_${pad(ts.getHours())}${pad(ts.getMinutes())}.xlsx`;
-    XLSX.writeFile(wb, name);
+    XLSX.writeFile(wb, `房型分词验收_${timestampSlug()}.xlsx`);
   };
   window.exportHtml = function(){
     // Inject DATA + taxonomy + state into a clone, so the snapshot can re-open without re-uploading
@@ -1540,9 +1559,7 @@ function initBoard(){
     if (snap) snap.textContent = JSON.stringify(state);
     const html = '<!doctype html>\n' + docEl.outerHTML;
     const blob = new Blob([html], {type:'text/html;charset=utf-8'});
-    const ts = new Date();
-    const pad = n=>String(n).padStart(2,'0');
-    const fname = `房型分词验收_快照_${ts.getFullYear()}${pad(ts.getMonth()+1)}${pad(ts.getDate())}_${pad(ts.getHours())}${pad(ts.getMinutes())}.html`;
+    const fname = `房型分词验收_快照_${timestampSlug()}.html`;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = fname;
