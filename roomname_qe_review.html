@@ -65,11 +65,37 @@ a.btn{text-decoration:none;color:inherit;display:inline-block}
 .kpi .val{font-size:22px;font-weight:700;color:var(--primary)}
 .kpi .sub{font-size:11px;color:var(--muted);margin-top:4px}
 .matrix-wrap{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px}
-.matrix-wrap h3{margin:0 0 10px;font-size:14px}
-.matrix-table{border-collapse:collapse;width:100%;max-width:480px;font-size:12px}
-.matrix-table th,.matrix-table td{border:1px solid var(--border);padding:8px 10px;text-align:center}
-.matrix-table th{background:#f9fafb}
-.matrix-metrics{margin-top:10px;font-size:12px;color:#374151;display:flex;flex-wrap:wrap;gap:12px}
+.matrix-wrap h3{margin:0 0 12px;font-size:14px;font-weight:600;color:#111827}
+.matrix-body{display:grid;grid-template-columns:auto 1px 1fr;gap:0 20px;align-items:center}
+.matrix-divider{width:1px;background:var(--border);align-self:stretch;min-height:120px}
+.matrix-body-left{padding:2px 0}
+.matrix-body-right{min-width:0;display:flex;flex-direction:column;gap:10px}
+.matrix-side-label{font-size:12px;font-weight:600;color:var(--muted);margin:0 0 2px}
+.matrix-table{border-collapse:collapse;width:100%;min-width:320px;max-width:520px;font-size:12px}
+.matrix-table th,.matrix-table td{border:1px solid var(--border);padding:9px 12px;text-align:center;vertical-align:middle}
+.matrix-table thead th{background:#f3f4f6;font-weight:600;color:#374151;font-size:11px;line-height:1.4}
+.matrix-table tbody th{background:#f9fafb;font-weight:600;color:#374151;text-align:left;font-size:12px;white-space:nowrap}
+.matrix-table tbody td{font-weight:600;font-size:13px;color:#111827}
+.matrix-cell-tp{background:#ecfdf5}
+.matrix-cell-fp{background:#fffbeb}
+.matrix-cell-fn{background:#fef2f2}
+.matrix-cell-tn{background:#f0fdf4}
+.matrix-cell-tag{display:block;font-size:10px;font-weight:600;color:var(--muted);margin-top:2px}
+.matrix-metrics-panel{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.matrix-metric-item{padding:10px 12px;background:#fafbfc;border:1px solid var(--border);border-radius:8px;display:flex;flex-direction:column;gap:6px;min-height:100%}
+.matrix-metric-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.matrix-metric-name{font-size:12px;font-weight:600;color:#374151;line-height:1.35}
+.matrix-metric-val{font-size:14px;font-weight:700;color:var(--primary);line-height:1.3;white-space:nowrap}
+.matrix-metric-formula{font-size:11px;line-height:1.5;font-family:Consolas,Menlo,"Courier New",monospace;word-break:break-all}
+.matrix-formula-eq{color:var(--muted)}
+.matrix-formula-calc{color:#4b5563}
+.matrix-meta{font-size:12px;color:var(--muted);margin:0;padding-top:2px}
+@media (max-width:900px){
+  .matrix-body{grid-template-columns:1fr;gap:16px;align-items:stretch}
+  .matrix-divider{display:none}
+  .matrix-metrics-panel{grid-template-columns:1fr}
+  .matrix-table{max-width:none}
+}
 .hotel-list{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 @media (max-width:720px){.hotel-list{grid-template-columns:1fr}}
 .hotel-item{display:flex;align-items:flex-start;flex-direction:column;gap:6px;padding:10px 14px;background:#fff;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:.15s;min-width:0}
@@ -135,16 +161,39 @@ textarea{resize:vertical}
 .sub-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
 .sub-tab{padding:4px 10px;font-size:12px;border:1px solid var(--border);border-radius:14px;background:#fff;cursor:pointer}
 .sub-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
-#fab{position:fixed;right:20px;bottom:20px;z-index:200}
+#fab{position:fixed;right:20px;bottom:20px;z-index:200;display:flex;flex-direction:column-reverse;align-items:center;gap:10px}
 #fabBtn{width:48px;height:48px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 14px rgba(37,99,235,.35)}
-#fabPanel{display:none;position:absolute;bottom:56px;right:0;width:320px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+#scrollTopBtn{width:40px;height:40px;border-radius:50%;background:#fff;color:var(--primary);border:1px solid var(--border);font-size:18px;line-height:1;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+#scrollTopBtn:hover{background:#eff6ff;border-color:#93c5fd}
+#fabPanel{display:none;position:absolute;bottom:108px;right:0;width:320px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
 #fabPanel.open{display:block}
 #fabPanel label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin:8px 0 4px}
 #fabPanel label:first-child{margin-top:0}
+#fabPanel label a{color:var(--primary);text-decoration:none;font-weight:600}
+#fabPanel label a:hover{text-decoration:underline}
 #snapshotBanner{display:none;background:#fffaf0;border-bottom:1px solid #feebc8;padding:8px 16px;font-size:12px;color:#744210}
 .list-section-tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--border)}
 .list-section-tabs .tab-btn{margin-bottom:-1px}
 #listTab601 .fix-cell input{min-width:140px}
+.ecode-stat-table{border-collapse:collapse;width:100%;font-size:12px}
+.ecode-stat-table th,.ecode-stat-table td{border:1px solid var(--border);padding:8px 10px;text-align:left}
+.ecode-stat-table th{background:#f9fafb;font-weight:600}
+.ecode-stat-table tr.ecode-row{cursor:pointer;transition:.12s}
+.ecode-stat-table tr.ecode-row:hover{background:#eff6ff}
+.ecode-stat-table tr.ecode-row.selected{background:#dbeafe}
+.ecode-stat-table .ecode-badge{display:inline-block;color:#fff;border-radius:4px;padding:1px 8px;font-size:11px;font-weight:600;min-width:36px;text-align:center}
+.ecode-stat-table .pct-col{color:var(--muted);font-size:11px}
+.ecode-detail-wrap{margin-top:12px}
+.ecode-detail-head{font-size:13px;font-weight:600;margin:0 0 8px;color:#374151}
+.ecode-detail-table{width:100%;border-collapse:collapse;font-size:12px}
+.ecode-detail-table th{text-align:left;padding:6px 8px;background:#f7f8fa;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:#4a5568;white-space:nowrap}
+.ecode-detail-table td{padding:6px 8px;border-bottom:1px solid #f0f0f0;vertical-align:top;word-break:break-word}
+.ecode-detail-table tbody tr.ecode-jump-row{cursor:pointer}
+.ecode-detail-table tbody tr.ecode-jump-row:hover td{background:#eff6ff}
+.ecode-detail-table .text-cell{line-height:1.5}
+.ecode-detail-table .col-hid{color:var(--primary);font-weight:600;white-space:nowrap}
+.ecode-detail-table .col-rid{color:#718096;font-size:11px;white-space:nowrap}
+.stats-tab-panel.hidden{display:none!important}
 </style>
 </head>
 <body>
@@ -210,14 +259,25 @@ textarea{resize:vertical}
 </section>
 
 <section id="statsView" class="view hidden">
-  <h2 style="margin:0 0 12px;font-size:16px">整体概况</h2>
-  <div class="kpi-grid" id="kpiGrid"></div>
-  <div class="matrix-wrap">
-    <h3>质检模型是否可信 — 混淆矩阵（房型维度，仅已标注）</h3>
-    <div id="matrixArea"></div>
+  <div class="list-section-tabs">
+    <button class="tab-btn active" data-stats-tab="overview" onclick="switchStatsTab('overview')">整体概况</button>
+    <button class="tab-btn" data-stats-tab="token601" onclick="switchStatsTab('token601')">同分词翻译不一致（按分词汇总）</button>
   </div>
-  <h2 style="margin:24px 0 12px;font-size:16px">同分词翻译不一致（按分词汇总）</h2>
-  <div class="table-wrap" id="global601Table"></div>
+  <div id="statsTabOverview" class="stats-tab-panel">
+    <div class="kpi-grid" id="kpiGrid"></div>
+    <div class="matrix-wrap">
+      <h3>质检模型是否可信 — 混淆矩阵（房型维度，仅已标注）</h3>
+      <div id="matrixArea"></div>
+    </div>
+    <div class="matrix-wrap">
+      <h3>模型质检结果分布</h3>
+      <div id="errorCodeDistArea"></div>
+      <div id="errorCodeDetailArea" class="ecode-detail-wrap"></div>
+    </div>
+  </div>
+  <div id="statsTabToken601" class="stats-tab-panel hidden">
+    <div class="table-wrap" id="global601Table"></div>
+  </div>
 </section>
 
 <section id="detailView" class="view hidden">
@@ -234,10 +294,11 @@ textarea{resize:vertical}
   <div id="fabPanel">
     <label>全局备注</label>
     <textarea id="globalNotes" rows="3" placeholder="整个验收任务备注…"></textarea>
-    <label>当前酒店备注</label>
+    <label id="hotelNotesLabel">当前酒店备注</label>
     <textarea id="hotelNotes" rows="3" placeholder="当前酒店备注…"></textarea>
   </div>
-  <button id="fabBtn" title="备注">📝</button>
+  <button id="scrollTopBtn" type="button" title="回到顶部" onclick="scrollToTop()">↑</button>
+  <button id="fabBtn" type="button" title="备注">📝</button>
 </div>
 
 <script id="preloadedSnapshot" type="application/json">__PRELOADED_SNAPSHOT__</script>
@@ -268,6 +329,8 @@ let curHotelIdx = 0;
 let activeTab = "accuracy";
 let activeConsistencyCode = "601";
 let activeMainView = "list";
+let activeStatsTab = "overview";
+let selectedErrorCode = null;
 let hotelSearchQuery = "";
 let saveTimer = null;
 let mergeParsedList = [];
@@ -325,6 +388,57 @@ function hasAnyRoomError(room){
 }
 
 function isHotelLevelError(e){ return String(e.errorCode||"").startsWith("6"); }
+
+function extractZhForHighlight(zh){
+  if(!zh||zh.includes(BRACKET_EN_HINT)) return "";
+  const core=String(zh).split(/[（(]/)[0].trim();
+  return core||String(zh).trim();
+}
+
+function findSourceTokenSpans(text, needle){
+  const spans=[];
+  if(!text||!needle) return spans;
+  const folded=text.toLowerCase();
+  const foldNeedle=String(needle).toLowerCase();
+  let pos=0, idx;
+  while((idx=folded.indexOf(foldNeedle,pos))>=0){
+    spans.push({start:idx,end:idx+needle.length});
+    pos=idx+needle.length;
+  }
+  if(spans.length) return spans;
+  const nsNeedle=foldNeedle.replace(/\s+/g,"");
+  if(!nsNeedle||nsNeedle===foldNeedle) return spans;
+  let nsText="", map=[];
+  for(let i=0;i<text.length;i++){
+    if(!/\s/.test(text[i])){ map.push(i); nsText+=folded[i]; }
+  }
+  pos=0;
+  while((idx=nsText.indexOf(nsNeedle,pos))>=0){
+    spans.push({start:map[idx], end:map[idx+nsNeedle.length-1]+1});
+    pos=idx+nsNeedle.length;
+  }
+  return spans;
+}
+
+function findTargetZhSpans(text, zh){
+  const spans=[];
+  if(!text||!zh||zh.includes(BRACKET_EN_HINT)) return spans;
+  const candidates=[zh];
+  const core=extractZhForHighlight(zh);
+  if(core&&core!==zh) candidates.push(core);
+  const seen=new Set();
+  for(const cand of candidates){
+    if(!cand||seen.has(cand)) continue;
+    seen.add(cand);
+    let pos=0, idx;
+    while((idx=text.indexOf(cand,pos))>=0){
+      spans.push({start:idx,end:idx+cand.length});
+      pos=idx+cand.length;
+    }
+    if(spans.length) break;
+  }
+  return spans;
+}
 
 function parseMatchToken(str){
   if(!str) return [];
@@ -508,20 +622,55 @@ function renderKpis(){
     <div class="kpi"><div class="label">模型质检-酒店维度准确率（无任何错误）</div><div class="val">${pct(s.modelOkHotelsLocalized,s.totalHotels)}</div><div class="sub">${s.modelOkHotelsLocalized} / ${s.totalHotels}，全房型无任何errorCode的酒店占比</div></div>
     <div class="kpi"><div class="label">人工核验-房型维度准确率</div><div class="val">${s.reviewedCount?pct(s.humanOk,s.reviewedCount):"—"}</div><div class="sub">${s.humanOk} / ${s.reviewedCount}，人工标注中选「正确」的房型占比</div></div>`;
   document.getElementById("matrixArea").innerHTML=s.reviewedCount?`
-    <table class="matrix-table"><thead><tr><th></th><th>模型有 101/201/301</th><th>模型无 101/201/301</th></tr></thead>
-    <tbody>
-      <tr><th>人工：错误</th><td>${s.tp} (TP)</td><td>${s.fn} (FN)</td></tr>
-      <tr><th>人工：正确</th><td>${s.fp} (FP)</td><td>${s.tn} (TN)</td></tr>
-    </tbody></table>
-    <div class="matrix-metrics">
-      <span>Precision: ${(s.prec*100).toFixed(1)}%</span>
-      <span>Recall: ${(s.rec*100).toFixed(1)}%</span>
-      <span>F1: ${(s.f1*100).toFixed(1)}%</span>
-      <span>已标注样本: ${s.reviewedCount}</span>
+    <div class="matrix-body">
+      <div class="matrix-body-left">
+        <div class="matrix-side-label">混淆矩阵</div>
+        <table class="matrix-table"><thead><tr><th></th><th>模型有 101/201/301</th><th>模型无 101/201/301</th></tr></thead>
+        <tbody>
+          <tr><th>人工：错误</th><td class="matrix-cell-tp">${s.tp}<span class="matrix-cell-tag">TP</span></td><td class="matrix-cell-fn">${s.fn}<span class="matrix-cell-tag">FN</span></td></tr>
+          <tr><th>人工：正确</th><td class="matrix-cell-fp">${s.fp}<span class="matrix-cell-tag">FP</span></td><td class="matrix-cell-tn">${s.tn}<span class="matrix-cell-tag">TN</span></td></tr>
+        </tbody></table>
+      </div>
+      <div class="matrix-divider" aria-hidden="true"></div>
+      <div class="matrix-body-right">
+        <div class="matrix-side-label">评估指标</div>
+        <div class="matrix-metrics-panel">
+          ${renderMatrixMetricItem(
+            "Precision（精确率）",
+            `${(s.prec*100).toFixed(1)}%`,
+            "TP / (TP + FP)",
+            `= ${s.tp} / (${s.tp} + ${s.fp})`
+          )}
+          ${renderMatrixMetricItem(
+            "Recall（召回率）",
+            `${(s.rec*100).toFixed(1)}%`,
+            "TP / (TP + FN)",
+            `= ${s.tp} / (${s.tp} + ${s.fn})`
+          )}
+          ${renderMatrixMetricItem(
+            "F1",
+            `${(s.f1*100).toFixed(1)}%`,
+            "2 × P × R / (P + R)",
+            `= 2 × ${s.prec.toFixed(4)} × ${s.rec.toFixed(4)} / (${s.prec.toFixed(4)} + ${s.rec.toFixed(4)})`
+          )}
+        </div>
+        <div class="matrix-meta">已标注样本：${s.reviewedCount}</div>
+      </div>
     </div>`:`<div class="sm-empty">暂无已标注房型</div>`;
 }
 
 function pct(a,b){ return b?((a/b*100).toFixed(1)+"%"):"—"; }
+
+function renderMatrixMetricItem(name, valPct, formulaEq, formulaCalc){
+  return `<div class="matrix-metric-item">
+    <div class="matrix-metric-head">
+      <div class="matrix-metric-name">${name}</div>
+      <div class="matrix-metric-val">${valPct}</div>
+    </div>
+    <div class="matrix-metric-formula matrix-formula-eq">${formulaEq}</div>
+    <div class="matrix-metric-formula matrix-formula-calc">${formulaCalc}</div>
+  </div>`;
+}
 
 function filteredHotels(){
   if (!DATA) return [];
@@ -583,16 +732,140 @@ function showListView(){
   renderHotelList();
   updateTopStat();
   updateTopbarNav();
+  updateHotelNotesLabel();
 }
 
 function showStatsView(){
   activeMainView = "stats";
   hideAllMainViews();
   document.getElementById("statsView").classList.remove("hidden");
-  renderKpis();
-  renderGlobal601Table();
+  renderStatsPanels();
   updateTopStat();
   updateTopbarNav();
+  updateHotelNotesLabel();
+}
+
+function switchStatsTab(tab){
+  activeStatsTab = tab;
+  document.querySelectorAll("[data-stats-tab]").forEach(b=>{
+    b.classList.toggle("active", b.dataset.statsTab === tab);
+  });
+  document.getElementById("statsTabOverview").classList.toggle("hidden", tab !== "overview");
+  document.getElementById("statsTabToken601").classList.toggle("hidden", tab !== "token601");
+  if (tab === "token601") renderGlobal601Table();
+}
+
+function renderStatsPanels(){
+  renderKpis();
+  renderErrorCodeDistribution();
+  if (activeStatsTab === "token601") renderGlobal601Table();
+  switchStatsTab(activeStatsTab);
+}
+
+function buildErrorCodeStats(){
+  const counter = new Map();
+  for (const r of allRooms()) {
+    for (const e of r.errorList || []) {
+      const code = String(e.errorCode || "").trim();
+      if (!code) continue;
+      if (!counter.has(code)) {
+        counter.set(code, { code, errorType: e.errorType || "", count: 0, rooms: [] });
+      }
+      const item = counter.get(code);
+      item.count += e.errorCount || 1;
+      if (!item.errorType && e.errorType) item.errorType = e.errorType;
+      item.rooms.push({
+        hotel_id: r.hotel_id,
+        resourceKey: r.resourceKey,
+        uid: r.uid,
+        sourceText: r.sourceText,
+        targetText: r.targetText,
+        matchToken: r.matchToken || "",
+        reason: e.reason || ""
+      });
+    }
+  }
+  const list = [...counter.values()].sort((a, b) => b.count - a.count || a.code.localeCompare(b.code));
+  const total = list.reduce((n, x) => n + x.count, 0);
+  return { list, total };
+}
+
+function renderErrorCodeDistribution(){
+  const area = document.getElementById("errorCodeDistArea");
+  const detailArea = document.getElementById("errorCodeDetailArea");
+  if (!area || !DATA) return;
+  const { list, total } = buildErrorCodeStats();
+  if (!list.length) {
+    area.innerHTML = `<div class="sm-empty">暂无模型质检错误数据</div>`;
+    if (detailArea) detailArea.innerHTML = "";
+    selectedErrorCode = null;
+    return;
+  }
+  if (selectedErrorCode && !list.some(x => x.code === selectedErrorCode)) selectedErrorCode = null;
+  area.innerHTML = `<table class="ecode-stat-table"><thead><tr>
+    <th>errorCode</th><th>errorType</th><th>频次</th><th>占比</th>
+  </tr></thead><tbody>${list.map(item=>{
+    const bg = ERROR_COLORS[item.code] || "#718096";
+    const pct = total ? (item.count / total * 100).toFixed(1) + "%" : "—";
+    const sel = item.code === selectedErrorCode ? " selected" : "";
+    return `<tr class="ecode-row${sel}" onclick="selectErrorCode('${item.code.replace(/'/g, "\\'")}')">
+      <td><span class="ecode-badge" style="background:${bg}">${esc(item.code)}</span></td>
+      <td>${esc(item.errorType)}</td>
+      <td>${item.count}</td>
+      <td class="pct-col">${pct}</td>
+    </tr>`;
+  }).join("")}</tbody></table>
+  <div class="matrix-metrics" style="margin-top:8px"><span>错误实例合计: ${total}</span><span>；errorCode 种类: ${list.length}</span></div>`;
+  renderErrorCodeDetail();
+}
+
+function renderErrorCodeDetail(){
+  const detailArea = document.getElementById("errorCodeDetailArea");
+  if (!detailArea) return;
+  if (!selectedErrorCode) {
+    detailArea.innerHTML = `<div class="sm-empty">点击上方 errorCode 查看涉及房型</div>`;
+    return;
+  }
+  const { list } = buildErrorCodeStats();
+  const item = list.find(x => x.code === selectedErrorCode);
+  if (!item) {
+    detailArea.innerHTML = "";
+    return;
+  }
+  const bg = ERROR_COLORS[item.code] || "#718096";
+  const rows = item.rooms.map((r, idx) => {
+    const pairs = parseMatchToken(r.matchToken);
+    const colorMap = {};
+    pairs.forEach(p => { if (!colorMap[p.en]) colorMap[p.en] = HL_COLORS[Object.keys(colorMap).length % HL_COLORS.length]; });
+    const u = "ec_" + uidJs(`${r.hotel_id}_${r.resourceKey}_${idx}`);
+    const srcPlain = esc(r.sourceText);
+    const tgtPlain = esc(r.targetText);
+    const srcHl = buildHighlightHtml(r.sourceText, pairs, "src", colorMap);
+    const tgtHl = buildHighlightHtml(r.targetText, pairs, "tgt", colorMap);
+    const roomUidEsc = String(r.uid).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    return `<tr class="ecode-jump-row" data-uid="${u}" title="点击进入酒店验收" onclick="openHotelRoom('${roomUidEsc}')" onmouseenter="hlRow('${u}',true)" onmouseleave="hlRow('${u}',false)">
+    <td class="col-hid">${esc(r.hotel_id)}</td>
+    <td class="col-rid">${esc(r.resourceKey)}</td>
+    <td class="text-cell"><span class="plain">${srcPlain}</span><span class="hl hidden">${srcHl}</span></td>
+    <td class="text-cell"><span class="plain">${tgtPlain}</span><span class="hl hidden">${tgtHl}</span></td>
+    <td class="error-reason">${esc(r.reason)}</td>
+  </tr>`;
+  }).join("");
+  detailArea.innerHTML = `
+    <h4 class="ecode-detail-head"><span class="ecode-badge" style="background:${bg}">${esc(item.code)}</span> ${esc(item.errorType)} — 共 ${item.rooms.length} 条房型记录 <span style="font-weight:400;font-size:12px;color:var(--muted)">（点击行跳转酒店验收，悬停高亮 token）</span></h4>
+    <div class="table-wrap"><table class="ecode-detail-table"><thead><tr>
+      <th>hotel_id</th><th>room_id</th><th>原名</th><th>译名</th><th>reason</th>
+    </tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function selectErrorCode(code){
+  selectedErrorCode = selectedErrorCode === code ? null : code;
+  renderErrorCodeDistribution();
+  if (selectedErrorCode) {
+    requestAnimationFrame(()=>{
+      document.getElementById("errorCodeDetailArea")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+  }
 }
 
 function openHotel(idx){
@@ -605,6 +878,25 @@ function openHotel(idx){
   renderDetail();
   loadFabNotes();
   updateTopbarNav();
+}
+
+function openHotelRoom(roomUid){
+  if (!DATA || !roomUid) return;
+  let hi = -1;
+  for (let i = 0; i < DATA.hotels.length; i++) {
+    if (DATA.hotels[i].rooms.some(r => r.uid === roomUid)) {
+      hi = i;
+      break;
+    }
+  }
+  if (hi < 0) return;
+  openHotel(hi);
+  switchTab("accuracy");
+  const u = uidJs(roomUid);
+  requestAnimationFrame(() => {
+    const tr = document.querySelector(`#tabAccuracy tr[data-uid="${u}"]`);
+    tr?.scrollIntoView({ behavior: "smooth", block: "center" });
+  });
 }
 
 function navHotel(delta){
@@ -635,26 +927,12 @@ function renderErrorsRoomLevel(errors){
 function buildHighlightHtml(text, pairs, side, colorMap){
   if(!text||!pairs.length) return esc(text);
   const spans=[];
-  const folded=text.toLowerCase();
   pairs.forEach((p,i)=>{
     const color=colorMap[p.en]||HL_COLORS[i%HL_COLORS.length];
-    if(side==="src"){
-      const needle=p.enRaw||p.en;
-      let idx=0, pos=0;
-      const foldNeedle=needle.toLowerCase();
-      while((idx=folded.indexOf(foldNeedle,pos))>=0){
-        spans.push({start:idx,end:idx+needle.length,color});
-        pos=idx+needle.length;
-      }
-    }else{
-      const zh=p.zh;
-      if(!zh||zh.includes(BRACKET_EN_HINT)) return;
-      let idx=0, pos=0;
-      while((idx=text.indexOf(zh,pos))>=0){
-        spans.push({start:idx,end:idx+zh.length,color});
-        pos=idx+zh.length;
-      }
-    }
+    const tokenSpans=side==="src"
+      ? findSourceTokenSpans(text, p.enRaw||p.en)
+      : findTargetZhSpans(text, p.zh);
+    tokenSpans.forEach(s=>spans.push({...s,color}));
   });
   if(!spans.length) return esc(text);
   spans.sort((a,b)=>a.start-b.start);
@@ -699,7 +977,7 @@ function saveReview(uid,val){
   setStore(s);
   renderDetail();
   if(activeMainView==="list") renderHotelList();
-  if(activeMainView==="stats") renderKpis();
+  if(activeMainView==="stats") renderStatsPanels();
   updateTopStat();
 }
 
@@ -818,6 +1096,8 @@ function goImportNew(){
   curHotelIdx = 0;
   activeTab = "accuracy";
   activeMainView = "list";
+  activeStatsTab = "overview";
+  selectedErrorCode = null;
   hotelSearchQuery = "";
   const searchEl = document.getElementById("hotelSearchInput");
   if (searchEl) searchEl.value = "";
@@ -1110,7 +1390,8 @@ function renderTabAccuracy(hotel,store){
 }
 
 function hlRow(uid,on){
-  const tr=document.querySelector(`tr[data-uid="${uid}"]`);
+  const tr=document.querySelector(`#errorCodeDetailArea tr[data-uid="${uid}"]`)
+    || document.querySelector(`tr[data-uid="${uid}"]`);
   if(!tr) return;
   tr.querySelectorAll(".plain").forEach(el=>el.classList.toggle("hidden",on));
   tr.querySelectorAll(".hl").forEach(el=>el.classList.toggle("hidden",!on));
@@ -1156,16 +1437,16 @@ function build601Groups(hotel){
 function highlightTokenInText(text, token, zh, side){
   if(!text) return esc(text);
   if(side==="src"&&token){
-    const re=new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"i");
-    const m=text.match(re);
-    if(!m) return esc(text);
-    const idx=m.index, end=idx+m[0].length;
-    return esc(text.slice(0,idx))+`<mark style="background:#fef08a">${esc(text.slice(idx,end))}</mark>`+esc(text.slice(end));
+    const spans=findSourceTokenSpans(text, token);
+    if(!spans.length) return esc(text);
+    const s=spans[0];
+    return esc(text.slice(0,s.start))+`<mark style="background:#fef08a">${esc(text.slice(s.start,s.end))}</mark>`+esc(text.slice(s.end));
   }
-  if(side==="tgt"&&zh&&!zh.includes(BRACKET_EN_HINT)){
-    const idx=text.indexOf(zh);
-    if(idx<0) return esc(text);
-    return esc(text.slice(0,idx))+`<mark style="background:#bfdbfe">${esc(zh)}</mark>`+esc(text.slice(idx+zh.length));
+  if(side==="tgt"&&zh){
+    const spans=findTargetZhSpans(text, zh);
+    if(!spans.length) return esc(text);
+    const s=spans[0];
+    return esc(text.slice(0,s.start))+`<mark style="background:#bfdbfe">${esc(text.slice(s.start,s.end))}</mark>`+esc(text.slice(s.end));
   }
   return esc(text);
 }
@@ -1241,7 +1522,25 @@ function loadFabNotes(){
   if(hotel){
     const hs=getHotelStore()[hotel.hotel_id];
     document.getElementById("hotelNotes").value=(hs&&hs.notes)||"";
+  }else{
+    document.getElementById("hotelNotes").value="";
   }
+  updateHotelNotesLabel();
+}
+
+function updateHotelNotesLabel(){
+  const el=document.getElementById("hotelNotesLabel");
+  if(!el) return;
+  const hotel=DATA&&DATA.hotels[curHotelIdx];
+  if(hotel){
+    el.innerHTML=`当前酒店（<a href="#" onclick="openHotel(${curHotelIdx});return false;">${esc(hotel.hotel_id)}</a>）备注`;
+  }else{
+    el.textContent="当前酒店备注";
+  }
+}
+
+function scrollToTop(){
+  window.scrollTo({top:0,behavior:"smooth"});
 }
 
 document.getElementById("fabBtn").onclick=()=>{
