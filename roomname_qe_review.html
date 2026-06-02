@@ -320,6 +320,10 @@ function hasModelRoomError(room){
   return (room.errorList||[]).some(e=>MODEL_ERR.has(String(e.errorCode)));
 }
 
+function hasAnyRoomError(room){
+  return (room.errorList||[]).length > 0;
+}
+
 function isHotelLevelError(e){ return String(e.errorCode||"").startsWith("6"); }
 
 function parseMatchToken(str){
@@ -478,6 +482,7 @@ function computeStats(){
   const modelOkRooms=rooms.filter(r=>!hasModelRoomError(r)).length;
   const totalHotels=DATA.hotels.length;
   const modelOkHotels=DATA.hotels.filter(h=>h.rooms.every(r=>!hasModelRoomError(r))).length;
+  const modelOkHotelsLocalized=DATA.hotels.filter(h=>h.rooms.every(r=>!hasAnyRoomError(r))).length;
   const reviewed=rooms.filter(r=>getEffectiveReview(r, store));
   const humanOk=reviewed.filter(r=>getEffectiveReview(r, store)===REVIEW.CORRECT).length;
   let tp=0,fp=0,fn=0,tn=0;
@@ -492,15 +497,16 @@ function computeStats(){
   const prec=tp+fp>0?tp/(tp+fp):0;
   const rec=tp+fn>0?tp/(tp+fn):0;
   const f1=prec+rec>0?2*prec*rec/(prec+rec):0;
-  return {totalRooms,modelOkRooms,totalHotels,modelOkHotels,reviewedCount:reviewed.length,humanOk,tp,fp,fn,tn,prec,rec,f1};
+  return {totalRooms,modelOkRooms,totalHotels,modelOkHotels,modelOkHotelsLocalized,reviewedCount:reviewed.length,humanOk,tp,fp,fn,tn,prec,rec,f1};
 }
 
 function renderKpis(){
   const s=computeStats();
   document.getElementById("kpiGrid").innerHTML=`
-    <div class="kpi"><div class="label">模型质检整体房型准确率</div><div class="val">${pct(s.modelOkRooms,s.totalRooms)}</div><div class="sub">${s.modelOkRooms} / ${s.totalRooms} 房型无 101/201/301</div></div>
-    <div class="kpi"><div class="label">模型质检整体酒店准确率</div><div class="val">${pct(s.modelOkHotels,s.totalHotels)}</div><div class="sub">${s.modelOkHotels} / ${s.totalHotels} 酒店全部房型无 101/201/301</div></div>
-    <div class="kpi"><div class="label">人工核验整体房型准确率</div><div class="val">${s.reviewedCount?pct(s.humanOk,s.reviewedCount):"—"}</div><div class="sub">${s.humanOk} / ${s.reviewedCount} 已标注中选「正确」</div></div>`;
+    <div class="kpi"><div class="label">模型质检-房型维度准确率（仅P0错误）</div><div class="val">${pct(s.modelOkRooms,s.totalRooms)}</div><div class="sub">${s.modelOkRooms} / ${s.totalRooms}，无101/201/301错误的房型占比</div></div>
+    <div class="kpi"><div class="label">模型质检-酒店维度准确率（仅P0错误）</div><div class="val">${pct(s.modelOkHotels,s.totalHotels)}</div><div class="sub">${s.modelOkHotels} / ${s.totalHotels}，全房型无101/201/301错误的酒店占比</div></div>
+    <div class="kpi"><div class="label">模型质检-酒店维度准确率（所有错误）</div><div class="val">${pct(s.modelOkHotelsLocalized,s.totalHotels)}</div><div class="sub">${s.modelOkHotelsLocalized} / ${s.totalHotels}，全房型无任何errorCode的酒店占比</div></div>
+    <div class="kpi"><div class="label">人工核验-房型维度准确率</div><div class="val">${s.reviewedCount?pct(s.humanOk,s.reviewedCount):"—"}</div><div class="sub">${s.humanOk} / ${s.reviewedCount}，人工标注中选「正确」的房型占比</div></div>`;
   document.getElementById("matrixArea").innerHTML=s.reviewedCount?`
     <table class="matrix-table"><thead><tr><th></th><th>模型有 101/201/301</th><th>模型无 101/201/301</th></tr></thead>
     <tbody>
