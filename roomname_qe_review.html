@@ -1,0 +1,1394 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>房型名称译名质检验收</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f6f7fb;--card:#fff;--border:#e5e7eb;--primary:#2563eb;--muted:#6b7280;--ok:#16a34a;--ng:#dc2626;--warn:#d97706}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;color:#111827;font-size:13px}
+.hidden{display:none!important}
+header.topbar{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid var(--border);padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+header.topbar h1{margin:0;font-size:15px;font-weight:600;white-space:nowrap}
+.topbar-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
+.topbar-right .search-input{width:140px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px}
+.btn.nav-active{background:#eff6ff;border-color:#93c5fd;color:var(--primary);font-weight:600}
+.btn{padding:6px 12px;border:1px solid var(--border);background:#fff;border-radius:6px;cursor:pointer;font-size:13px}
+a.btn{text-decoration:none;color:inherit;display:inline-block}
+.btn:hover{background:#f3f4f6}
+.btn.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.btn.primary:hover{background:#1d4ed8}
+.nav{display:inline-flex;align-items:center;gap:6px}
+.nav .idx{font-weight:600;min-width:80px;text-align:center}
+.view{padding:16px;max-width:1200px;margin:0 auto 80px}
+.grow{flex:1}
+#uploadView{padding:48px 16px 60px;max-width:1100px;margin:0 auto}
+#uploadView .page-home-bar{margin:0 0 16px}
+#uploadView .landing-title{text-align:center;font-size:22px;font-weight:700;margin:0 0 20px}
+#uploadView .landing-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+@media (max-width:900px){#uploadView .landing-grid{grid-template-columns:1fr}}
+#uploadView .wizard-col .col-heading{font-size:16px;font-weight:600;margin:0 0 4px}
+#uploadView .wizard-col .subtitle{text-align:left;color:var(--muted);font-size:13px;margin:0 0 16px;line-height:1.6}
+#uploadView .wizard-col .subtitle code{background:#fef3c7;padding:1px 4px;border-radius:3px;font-size:12px}
+#uploadView .step{background:#fff;border:1px solid var(--border);border-radius:12px;padding:20px 22px;margin-bottom:14px}
+#uploadView .step.current{border-color:var(--primary);box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+#uploadView .step h3{margin:0 0 12px;font-size:15px;font-weight:600}
+#uploadView .step .req{font-size:12px;color:var(--muted);line-height:1.6;padding:8px 10px;background:#f9fafb;border-radius:6px;margin-bottom:10px}
+#uploadView .upload-btn{display:block;width:100%;padding:11px 14px;font-size:14px;font-weight:600;background:var(--primary);color:#fff;border:none;border-radius:6px;cursor:pointer;text-align:center}
+#uploadView .upload-btn:hover{background:#1d4ed8}
+#uploadView .file-info{padding:10px 12px;background:#fff;border:1px solid #86efac;border-radius:6px;font-size:12.5px;color:#065f46;line-height:1.6;margin-top:10px}
+.upload-zone{display:block;border:2px dashed #cbd5e1;border-radius:8px;padding:28px 16px;cursor:pointer;background:#f9fafb;text-align:center;font-size:14px;color:#374151;line-height:1.5}
+.upload-zone:hover{border-color:var(--primary);background:#eff6ff;color:var(--primary)}
+#uploadView .merge-file-list{margin:10px 0 12px}
+#uploadView .merge-file-item{padding:8px 12px;background:#fff;border:1px solid var(--border);border-radius:6px;font-size:12.5px;margin-bottom:6px;line-height:1.5}
+#uploadView .merge-file-item.ok{border-color:#86efac;color:#065f46}
+#uploadView .merge-file-item.err{border-color:#fca5a5;background:#fef2f2;color:#991b1b}
+#uploadView .merge-dup-panel{display:none;margin:12px 0;padding:12px 14px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px}
+#uploadView .merge-dup-panel.visible{display:block}
+#uploadView .merge-dup-panel h4{margin:0 0 10px;font-size:13px;font-weight:600;color:#92400e}
+#uploadView .dup-group{margin-bottom:10px}
+#uploadView .dup-group h5{margin:0 0 6px;font-size:12.5px;font-weight:600;color:#374151}
+#uploadView .dup-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.5px}
+#uploadView .dup-row label{display:flex;align-items:center;gap:8px;cursor:pointer;flex:1}
+#uploadView .dup-row .pill-done{font-size:11px;padding:2px 6px;border-radius:4px;background:#dcfce7;color:#166534}
+#uploadView .dup-row .pill-todo{font-size:11px;padding:2px 6px;border-radius:4px;background:#f3f4f6;color:#6b7280}
+#uploadView .continue-btn{width:100%;padding:12px;font-size:15px;font-weight:600;background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;margin-top:8px}
+#uploadView .continue-btn:disabled{background:#cbd5e1;cursor:not-allowed}
+#uploadView .continue-btn:hover:not(:disabled){background:#1d4ed8}
+#uploadView .err-box{margin-top:12px;padding:10px 12px;background:#fef2f2;border:1px solid #fecaca;border-radius:6px;color:#991b1b;font-size:13px;line-height:1.5}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.kpi .label{font-size:12px;color:var(--muted);margin-bottom:4px}
+.kpi .val{font-size:22px;font-weight:700;color:var(--primary)}
+.kpi .sub{font-size:11px;color:var(--muted);margin-top:4px}
+.matrix-wrap{background:#fff;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px}
+.matrix-wrap h3{margin:0 0 10px;font-size:14px}
+.matrix-table{border-collapse:collapse;width:100%;max-width:480px;font-size:12px}
+.matrix-table th,.matrix-table td{border:1px solid var(--border);padding:8px 10px;text-align:center}
+.matrix-table th{background:#f9fafb}
+.matrix-metrics{margin-top:10px;font-size:12px;color:#374151;display:flex;flex-wrap:wrap;gap:12px}
+.hotel-list{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media (max-width:720px){.hotel-list{grid-template-columns:1fr}}
+.hotel-item{display:flex;align-items:flex-start;flex-direction:column;gap:6px;padding:10px 14px;background:#fff;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:.15s;min-width:0}
+.hotel-item:hover{background:#eff6ff;border-color:#93c5fd}
+.hotel-item.current{box-shadow:0 0 0 2px var(--primary)}
+.hotel-item .hid{font-weight:600;color:var(--primary)}
+.hotel-item .meta{color:#374151;font-size:12px;line-height:1.4}
+.hotel-item .pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:2px}
+.pill{font-size:11px;padding:2px 8px;border-radius:10px;background:#f3f4f6;color:#6b7280;font-weight:600}
+.pill.err{background:#fee2e2;color:#991b1b}
+.pill.ok{background:#dcfce7;color:#166534}
+.detail-header{background:#ebf4ff;border:1px solid #bee3f8;border-radius:8px;padding:10px 14px;margin-bottom:12px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.detail-header a.hotel-link{font-weight:700;color:#2b6cb0;text-decoration:none}
+.detail-header a.hotel-link:hover{text-decoration:underline}
+.tabs{display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--border)}
+.tab-btn{padding:8px 16px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab-btn.active{color:var(--primary);border-bottom-color:var(--primary)}
+.table-wrap{overflow-x:auto;background:#fff;border:1px solid var(--border);border-radius:8px}
+.room-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.room-table th{padding:8px;text-align:left;font-size:11px;font-weight:600;color:#4a5568;background:#f7f8fa;border-bottom:1px solid var(--border)}
+.room-table td{padding:8px;border-bottom:1px solid #f0f0f0;vertical-align:top;word-break:break-word}
+.room-table tr:last-child td{border-bottom:none}
+.room-table tr.row-model-err{background:#fff5f5}
+.room-table tr.row-human-err{background:#fef2f2}
+.col-rk{width:72px;color:#718096;font-size:11px}
+.col-review{width:150px}
+.badge{display:inline-block;color:#fff;border-radius:4px;padding:1px 6px;font-size:11px;margin-right:4px}
+.error-item{margin-bottom:6px}
+.error-reason{font-size:12px;color:#4a5568;margin-top:3px;line-height:1.5}
+.no-error{color:#38a169;font-size:12px}
+.radio-label{display:flex;align-items:center;gap:4px;cursor:pointer;font-size:12px;padding:2px 0}
+textarea,input[type=text]{width:100%;border:1px solid var(--border);border-radius:4px;padding:4px 8px;font-size:12px;font-family:inherit}
+textarea{resize:vertical}
+.submodule{background:#fff;border:1px solid var(--border);border-radius:6px;margin-bottom:8px;overflow:hidden}
+.submodule[open]{box-shadow:0 1px 3px rgba(0,0,0,.05)}
+.sm-summary{padding:8px 12px;cursor:pointer;font-size:13px;font-weight:600;color:#2d3748;background:#edf2f7;list-style:none;display:flex;align-items:center;gap:8px}
+.sm-summary::-webkit-details-marker{display:none}
+.sm-summary::before{content:"▶";font-size:10px;color:#718096;transition:.15s}
+.submodule[open] .sm-summary::before{transform:rotate(90deg)}
+.sm-count{background:#cbd5e0;color:#2d3748;font-size:11px;padding:1px 7px;border-radius:9px;font-weight:600}
+.submodule[open] .sm-count{background:#fbd38d;color:#7b341e}
+.sm-body{padding:10px 12px}
+.sm-empty{color:#a0aec0;font-size:12px;font-style:italic;padding:6px 0}
+.sm-table{width:100%;border-collapse:collapse;font-size:12px}
+.sm-table th{text-align:left;padding:6px 8px;background:#f7f8fa;border-bottom:1px solid var(--border);font-size:11px;font-weight:600;color:#4a5568}
+.sm-table td{padding:6px 8px;border-bottom:1px solid #f0f0f0;vertical-align:top;word-break:break-word}
+.token-panel{margin-bottom:14px;padding:10px;border:1px solid #e2e8f0;border-radius:6px;background:#f7fafc}
+.token-panel h4.token-title{margin:0 0 8px;font-size:15px;font-weight:700;color:#ea580c}
+.token-rooms-details{margin-top:8px}
+.token-rooms-summary{cursor:pointer;font-size:12px;font-weight:600;color:#4a5568;padding:6px 0;list-style:none;display:flex;align-items:center;gap:6px;user-select:none}
+.token-rooms-summary::-webkit-details-marker{display:none}
+.token-rooms-summary::before{content:"▶";font-size:10px;color:#718096;transition:.15s}
+.token-rooms-details[open]>.token-rooms-summary::before{transform:rotate(90deg)}
+.tp-head,.token-row-grid{display:grid;grid-template-columns:120px 1fr 180px;gap:10px;padding:4px 0;align-items:start}
+.tp-head{font-size:11px;color:#718096;font-weight:600;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:4px}
+.token-en{font-weight:600;font-family:Consolas,Menlo,monospace}
+.zh-badge{display:inline-block;background:#e6fffa;color:#234e52;border-radius:10px;padding:2px 8px;font-size:12px;margin:2px 4px 2px 0}
+.zh-badge em{font-style:normal;color:#718096;font-size:10px;margin-left:2px}
+.zh-badge.conflict{background:#fed7d7;color:#822727;font-weight:600}
+.token-fix-input{background:#fffaf0}
+.text-cell{line-height:1.5}
+.text-cell .tok-hl{padding:1px 2px;border-radius:3px}
+.sub-tabs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.sub-tab{padding:4px 10px;font-size:12px;border:1px solid var(--border);border-radius:14px;background:#fff;cursor:pointer}
+.sub-tab.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+#fab{position:fixed;right:20px;bottom:20px;z-index:200}
+#fabBtn{width:48px;height:48px;border-radius:50%;background:var(--primary);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 14px rgba(37,99,235,.35)}
+#fabPanel{display:none;position:absolute;bottom:56px;right:0;width:320px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+#fabPanel.open{display:block}
+#fabPanel label{font-size:11px;font-weight:600;color:var(--muted);display:block;margin:8px 0 4px}
+#fabPanel label:first-child{margin-top:0}
+#snapshotBanner{display:none;background:#fffaf0;border-bottom:1px solid #feebc8;padding:8px 16px;font-size:12px;color:#744210}
+.list-section-tabs{display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid var(--border)}
+.list-section-tabs .tab-btn{margin-bottom:-1px}
+#listTab601 .fix-cell input{min-width:140px}
+</style>
+</head>
+<body>
+<div id="snapshotBanner">此 HTML 已包含预置标注（<span id="snapshotTime"></span>）。<a href="#" onclick="document.getElementById('snapshotBanner').style.display='none';return false;" style="float:right">关闭</a></div>
+
+<header class="topbar" id="mainTopbar" style="display:none">
+  <h1>房型译名质检验收</h1>
+  <div class="topbar-left">
+    <a class="btn" href="index.html">← 回到首页</a>
+    <button class="btn" id="btnImportNew" onclick="confirmImportNew()">导入新文件</button>
+    <button class="btn" id="btnToList" onclick="showListView()">酒店列表</button>
+    <button class="btn" id="btnToStats" onclick="showStatsView()">数据统计</button>
+  </div>
+  <div class="topbar-right">
+    <input type="text" class="search-input" id="hotelSearchInput" placeholder="搜索 hotel_id" oninput="onHotelSearch(this.value)">
+    <span id="topStat" style="font-size:12px;color:var(--muted);white-space:nowrap"></span>
+    <button class="btn" onclick="gotoNextIncomplete()">跳转至未完成</button>
+    <button class="btn" onclick="exportCSV()">导出 Excel</button>
+    <button class="btn primary" onclick="exportAnnotatedHTML()">导出标注版 HTML</button>
+  </div>
+</header>
+
+<section id="uploadView" class="view">
+  <div class="page-home-bar"><a class="btn" href="index.html">← 回到首页</a></div>
+  <h1 class="landing-title">🕵️‍♀️ 房型译名质检</h1>
+  <div class="landing-grid">
+    <div class="wizard-col">
+      <div class="col-heading">新建验收</div>
+      <p class="subtitle">上传 Excel 即可开始验收</p>
+      <div class="step current">
+        <h3>导入质检 Excel</h3>
+        <div class="req">表头列必须包含：<code>hotel_id</code>、<code>source_locale</code>、<code>target_locale</code>、<code>quality_estimation_result</code></div>
+        <div class="upload-zone" id="uploadZone">点击或拖拽上传 .xlsx</div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display:none">
+        <div id="uploadFileInfo"></div>
+        <div id="uploadErr" class="err-box hidden"></div>
+      </div>
+    </div>
+    <div class="wizard-col">
+      <div class="col-heading">汇总验收 HTML</div>
+      <p class="subtitle">选择多个「导出标注版 HTML」快照，合并为一份（可处理重复 hotel_id）</p>
+      <div class="step current">
+        <h3>选择快照文件</h3>
+        <div class="req">仅支持本工具导出的 HTML 快照（内含 <code>preloadedSnapshot</code> 与验收进度）。</div>
+        <label class="upload-btn" for="mergeFilesInput" id="mergeFilesBtn">选择 HTML 文件（可多选）…</label>
+        <input type="file" id="mergeFilesInput" accept=".html,.htm" multiple style="display:none">
+      </div>
+      <div id="mergeFileList" class="merge-file-list"></div>
+      <div id="mergeDupPanel" class="merge-dup-panel">
+        <h4>重复 hotel_id — 请勾选要保留的条目</h4>
+        <div id="mergeDupTable"></div>
+      </div>
+      <div id="mergeErr"></div>
+      <button class="continue-btn" id="mergeBtn" disabled>开始合并并打开 ▶</button>
+    </div>
+  </div>
+</section>
+
+<section id="listView" class="view hidden">
+  <h2 style="margin:0 0 12px;font-size:16px">酒店列表（点击进入验收）</h2>
+  <div class="hotel-list" id="hotelList"></div>
+  <div id="hotelListEmpty" class="sm-empty hidden" style="margin-top:12px">无匹配的 hotel_id</div>
+</section>
+
+<section id="statsView" class="view hidden">
+  <h2 style="margin:0 0 12px;font-size:16px">整体概况</h2>
+  <div class="kpi-grid" id="kpiGrid"></div>
+  <div class="matrix-wrap">
+    <h3>质检模型是否可信 — 混淆矩阵（房型维度，仅已标注）</h3>
+    <div id="matrixArea"></div>
+  </div>
+  <h2 style="margin:24px 0 12px;font-size:16px">同分词翻译不一致（按分词汇总）</h2>
+  <div class="table-wrap" id="global601Table"></div>
+</section>
+
+<section id="detailView" class="view hidden">
+  <div class="detail-header" id="detailHeader"></div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="accuracy" onclick="switchTab('accuracy')">单房型翻译准确性</button>
+    <button class="tab-btn" data-tab="consistency" onclick="switchTab('consistency')">同酒店翻译一致性</button>
+  </div>
+  <div id="tabAccuracy"></div>
+  <div id="tabConsistency" class="hidden"></div>
+</section>
+
+<div id="fab">
+  <div id="fabPanel">
+    <label>全局备注</label>
+    <textarea id="globalNotes" rows="3" placeholder="整个验收任务备注…"></textarea>
+    <label>当前酒店备注</label>
+    <textarea id="hotelNotes" rows="3" placeholder="当前酒店备注…"></textarea>
+  </div>
+  <button id="fabBtn" title="备注">📝</button>
+</div>
+
+<script id="preloadedSnapshot" type="application/json">__PRELOADED_SNAPSHOT__</script>
+
+<script>
+const STORE_KEY = "roomname_qe_review.v1";
+const HOTEL_STORE_KEY = "roomname_qe_hotel.v1";
+const GLOBAL_NOTES_KEY = "roomname_qe_global_notes.v1";
+const PAYLOAD_KEY = "roomname_qe_payload.v1";
+const HASH_KEY = "roomname_qe_hash.v1";
+const IDX_KEY = "roomname_qe_hotel_idx.v1";
+const MODEL_ERR = new Set(["101","201","301"]);
+const REVIEW = { WRONG: "wrong", CORRECT: "correct" };
+const ERROR_COLORS = {"101":"#e53e3e","201":"#dd6b20","301":"#d69e2e","401":"#805ad5","601":"#2b6cb0","602":"#276749","603":"#2c7a7b","604":"#b7791f","605":"#97266d"};
+const HL_COLORS = ["#fef08a","#bfdbfe","#bbf7d0","#fbcfe8","#ddd6fe","#fed7aa","#99f6e4","#fecaca"];
+const CONSISTENCY_TABS = [
+  {code:"601",title:"601 同分词翻译不一致"},
+  {code:"602",title:"602 语序不一致"},
+  {code:"603",title:"603 数字/专名翻译策略不一致"},
+  {code:"604",title:"604 等级序列不一致"},
+  {code:"605",title:"605 翻译风格不一致"}
+];
+const BRACKET_EN_HINT = "括号内英文";
+const HOTEL_URL = id => `https://hotels.ctrip.com/hotels/${id}.html#ctm_ref=chp_htl_3_n`;
+
+let DATA = null;
+let curHotelIdx = 0;
+let activeTab = "accuracy";
+let activeConsistencyCode = "601";
+let activeMainView = "list";
+let hotelSearchQuery = "";
+let saveTimer = null;
+let mergeParsedList = [];
+let _mergeWizardHandlersBound = false;
+
+function esc(s){ const d=document.createElement("div"); d.textContent=s==null?"":String(s); return d.innerHTML; }
+function uidJs(uid){ return String(uid).replace(/ /g,"_").replace(/-/g,"_"); }
+
+function getStore(){ try{return JSON.parse(localStorage.getItem(STORE_KEY)||"{}")}catch(e){return{}} }
+function setStore(s){ localStorage.setItem(STORE_KEY,JSON.stringify(s)); }
+function getHotelStore(){ try{return JSON.parse(localStorage.getItem(HOTEL_STORE_KEY)||"{}")}catch(e){return{}} }
+function setHotelStore(s){ localStorage.setItem(HOTEL_STORE_KEY,JSON.stringify(s)); }
+function ensureHotelStore(hid){
+  const s=getHotelStore();
+  if(!s[hid]) s[hid]={token_fixed:{},notes:""};
+  if(!s[hid].token_fixed) s[hid].token_fixed={};
+  return s;
+}
+
+function debounceSave(fn){ clearTimeout(saveTimer); saveTimer=setTimeout(fn,200); }
+
+function toHalfWidthPunct(s){
+  if (!s) return "";
+  let out = "";
+  for (let i = 0; i < s.length; i++) {
+    const code = s.charCodeAt(i);
+    if (code >= 0xFF01 && code <= 0xFF5E) out += String.fromCharCode(code - 0xFEE0);
+    else if (code === 0x3000) out += " ";
+    else out += s[i];
+  }
+  return out;
+}
+
+function normForContainCheck(s){
+  return toHalfWidthPunct(s).toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function isTargetContainsSource(src, tgt){
+  const ns = normForContainCheck(src);
+  const nt = normForContainCheck(tgt);
+  if (!ns || !nt) return false;
+  return nt.includes(ns);
+}
+
+function tokenKey(token){
+  return String(token).replace(/[^a-zA-Z0-9_]/g, "_");
+}
+
+function hasModelRoomError(room){
+  return (room.errorList||[]).some(e=>MODEL_ERR.has(String(e.errorCode)));
+}
+
+function isHotelLevelError(e){ return String(e.errorCode||"").startsWith("6"); }
+
+function parseMatchToken(str){
+  if(!str) return [];
+  const pairs=[];
+  for(const seg of str.split(/[，,;；]/)){
+    const s=seg.trim();
+    if(!s) continue;
+    const m=s.split(/[：:]/);
+    if(m.length<2) continue;
+    const en=m[0].trim(), zh=m.slice(1).join(":").trim();
+    if(!en||!zh||zh.toLowerCase()==="null") continue;
+    if(["Addition","Omission","Mistranslation"].includes(en)) continue;
+    pairs.push({en:en.toLowerCase(), enRaw:en, zh});
+  }
+  return pairs;
+}
+
+function getDefaultReview(room){
+  if(isTargetContainsSource(room.sourceText, room.targetText)) return REVIEW.WRONG;
+  return null;
+}
+
+function getEffectiveReview(room, store){
+  const saved = store[room.uid];
+  if (saved && saved.review) return saved.review;
+  return getDefaultReview(room) || "";
+}
+
+function applyDefaultReviews(){
+  const s = getStore();
+  let changed = false;
+  for (const h of DATA.hotels) {
+    for (const r of h.rooms) {
+      const d = getDefaultReview(r);
+      if (d && !(s[r.uid] && s[r.uid].review)) {
+        if (!s[r.uid]) s[r.uid] = {};
+        s[r.uid].review = d;
+        changed = true;
+      }
+      if (s[r.uid] && s[r.uid].review === "structured") {
+        s[r.uid].review = REVIEW.WRONG;
+        changed = true;
+      }
+    }
+  }
+  if (changed) setStore(s);
+}
+
+async function sha1Hex(str){
+  const buf=await crypto.subtle.digest("SHA-1",new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("").slice(0,12);
+}
+
+function parseHotelsFromSheet(rows, headers){
+  const required=["hotel_id","source_locale","target_locale","quality_estimation_result"];
+  const norm=h=>String(h||"").trim().toLowerCase();
+  const hmap={};
+  headers.forEach((h,i)=>{ hmap[norm(h)]=i; });
+  for(const c of required){
+    if(hmap[c]==null) throw new Error("缺少必填列: "+c);
+  }
+  const hotels=[];
+  const errors=[];
+  rows.forEach((row,ri)=>{
+    const hotel_id=String(row[hmap.hotel_id]??"").trim();
+    if(!hotel_id) return;
+    const qeRaw=row[hmap.quality_estimation_result];
+    if(!qeRaw||qeRaw==="null"){ errors.push(`行${ri+2}: hotel_id=${hotel_id} 无 quality_estimation_result`); return; }
+    let roomsRaw;
+    try{
+      roomsRaw=typeof qeRaw==="string"?JSON.parse(qeRaw):qeRaw;
+    }catch(e){
+      errors.push(`行${ri+2}: hotel_id=${hotel_id} JSON 解析失败`);
+      return;
+    }
+    if(!Array.isArray(roomsRaw)){ errors.push(`行${ri+2}: quality_estimation_result 应为数组`); return; }
+    const rooms=roomsRaw.map(r=>{
+      const rk=String(r.resourceKey??"");
+      const uid=`${hotel_id}_${rk}`.replace(/ /g,"_").replace(/-/g,"_");
+      return {
+        resourceKey:rk,
+        sourceText:r.sourceText||"",
+        targetText:r.targetText||"",
+        errorList:r.errorList||[],
+        matchToken:r.matchToken||"",
+        uid
+      };
+    });
+    rooms.sort((a,b)=>a.sourceText.toLowerCase().localeCompare(b.sourceText.toLowerCase()));
+    hotels.push({
+      hotel_id,
+      source_locale:String(row[hmap.source_locale]??""),
+      target_locale:String(row[hmap.target_locale]??""),
+      rooms
+    });
+  });
+  if(!hotels.length && errors.length) throw new Error(errors.join("\n"));
+  if(errors.length) console.warn(errors.join("\n"));
+  return hotels;
+}
+
+async function ingestHotels(hotels){
+  const payload={hotels};
+  payload.payloadHash=await sha1Hex(JSON.stringify(payload));
+  const prevHash=localStorage.getItem(HASH_KEY);
+  if(prevHash!==payload.payloadHash){
+    localStorage.removeItem(STORE_KEY);
+    localStorage.removeItem(HOTEL_STORE_KEY);
+  }
+  localStorage.setItem(PAYLOAD_KEY,JSON.stringify(payload));
+  localStorage.setItem(HASH_KEY,payload.payloadHash);
+  DATA=payload;
+  applyDefaultReviews();
+  curHotelIdx=parseInt(localStorage.getItem(IDX_KEY)||"0",10)||0;
+  if(curHotelIdx>=DATA.hotels.length) curHotelIdx=0;
+  document.getElementById("mainTopbar").style.display="";
+  document.getElementById("uploadView").classList.add("hidden");
+  showListView();
+}
+
+async function handleFile(file){
+  const errEl=document.getElementById("uploadErr");
+  const infoEl=document.getElementById("uploadFileInfo");
+  errEl.classList.add("hidden");
+  if(infoEl) infoEl.innerHTML="";
+  try{
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:"array"});
+    const ws=wb.Sheets[wb.SheetNames[0]];
+    const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+    if(aoa.length<2) throw new Error("Excel 无数据行");
+    const headers=aoa[0].map(h=>String(h||""));
+    const hotels=parseHotelsFromSheet(aoa.slice(1),headers);
+    if(!hotels.length) throw new Error("未解析到有效酒店");
+    const totalRooms=hotels.reduce((n,h)=>n+h.rooms.length,0);
+    if(infoEl) infoEl.innerHTML=`<div class="file-info">✅ <b>${esc(file.name)}</b><br>解析到 <b>${hotels.length}</b> 个酒店，<b>${totalRooms}</b> 个房型，正在进入…</div>`;
+    await ingestHotels(hotels);
+  }catch(e){
+    errEl.textContent=e.message||String(e);
+    errEl.classList.remove("hidden");
+  }
+}
+
+function allRooms(){
+  const out=[];
+  if(!DATA) return out;
+  for(const h of DATA.hotels) for(const r of h.rooms) out.push({...r, hotel_id:h.hotel_id, hotel:h});
+  return out;
+}
+
+function computeStats(){
+  const rooms=allRooms();
+  const store=getStore();
+  const totalRooms=rooms.length;
+  const modelOkRooms=rooms.filter(r=>!hasModelRoomError(r)).length;
+  const totalHotels=DATA.hotels.length;
+  const modelOkHotels=DATA.hotels.filter(h=>h.rooms.every(r=>!hasModelRoomError(r))).length;
+  const reviewed=rooms.filter(r=>getEffectiveReview(r, store));
+  const humanOk=reviewed.filter(r=>getEffectiveReview(r, store)===REVIEW.CORRECT).length;
+  let tp=0,fp=0,fn=0,tn=0;
+  for (const r of reviewed) {
+    const humanPos = getEffectiveReview(r, store) === REVIEW.WRONG;
+    const modelPos = hasModelRoomError(r);
+    if(humanPos&&modelPos) tp++;
+    else if(!humanPos&&modelPos) fp++;
+    else if(humanPos&&!modelPos) fn++;
+    else tn++;
+  }
+  const prec=tp+fp>0?tp/(tp+fp):0;
+  const rec=tp+fn>0?tp/(tp+fn):0;
+  const f1=prec+rec>0?2*prec*rec/(prec+rec):0;
+  return {totalRooms,modelOkRooms,totalHotels,modelOkHotels,reviewedCount:reviewed.length,humanOk,tp,fp,fn,tn,prec,rec,f1};
+}
+
+function renderKpis(){
+  const s=computeStats();
+  document.getElementById("kpiGrid").innerHTML=`
+    <div class="kpi"><div class="label">模型质检整体房型准确率</div><div class="val">${pct(s.modelOkRooms,s.totalRooms)}</div><div class="sub">${s.modelOkRooms} / ${s.totalRooms} 房型无 101/201/301</div></div>
+    <div class="kpi"><div class="label">模型质检整体酒店准确率</div><div class="val">${pct(s.modelOkHotels,s.totalHotels)}</div><div class="sub">${s.modelOkHotels} / ${s.totalHotels} 酒店全部房型无 101/201/301</div></div>
+    <div class="kpi"><div class="label">人工核验整体房型准确率</div><div class="val">${s.reviewedCount?pct(s.humanOk,s.reviewedCount):"—"}</div><div class="sub">${s.humanOk} / ${s.reviewedCount} 已标注中选「正确」</div></div>`;
+  document.getElementById("matrixArea").innerHTML=s.reviewedCount?`
+    <table class="matrix-table"><thead><tr><th></th><th>模型有 101/201/301</th><th>模型无 101/201/301</th></tr></thead>
+    <tbody>
+      <tr><th>人工：错误</th><td>${s.tp} (TP)</td><td>${s.fn} (FN)</td></tr>
+      <tr><th>人工：正确</th><td>${s.fp} (FP)</td><td>${s.tn} (TN)</td></tr>
+    </tbody></table>
+    <div class="matrix-metrics">
+      <span>Precision: ${(s.prec*100).toFixed(1)}%</span>
+      <span>Recall: ${(s.rec*100).toFixed(1)}%</span>
+      <span>F1: ${(s.f1*100).toFixed(1)}%</span>
+      <span>已标注样本: ${s.reviewedCount}</span>
+    </div>`:`<div class="sm-empty">暂无已标注房型</div>`;
+}
+
+function pct(a,b){ return b?((a/b*100).toFixed(1)+"%"):"—"; }
+
+function filteredHotels(){
+  if (!DATA) return [];
+  const q = hotelSearchQuery.trim().toLowerCase();
+  if (!q) return DATA.hotels.map((h, i) => ({ hotel: h, idx: i }));
+  return DATA.hotels
+    .map((h, i) => ({ hotel: h, idx: i }))
+    .filter(x => String(x.hotel.hotel_id).toLowerCase().includes(q));
+}
+
+function onHotelSearch(val){
+  hotelSearchQuery = val;
+  if (val.trim() && activeMainView !== "list") showListView();
+  else if (activeMainView === "list") renderHotelList();
+}
+
+function renderHotelList(){
+  const store = getStore();
+  const el = document.getElementById("hotelList");
+  const emptyEl = document.getElementById("hotelListEmpty");
+  const items = filteredHotels();
+  if (!items.length) {
+    el.innerHTML = "";
+    emptyEl.classList.remove("hidden");
+    return;
+  }
+  emptyEl.classList.add("hidden");
+  el.innerHTML = items.map(({ hotel: h, idx: i }) => {
+    const total = h.rooms.length;
+    const modelErr = h.rooms.filter(r => hasModelRoomError(r)).length;
+    const done = h.rooms.filter(r => getEffectiveReview(r, store)).length;
+    return `<div class="hotel-item${i === curHotelIdx ? " current" : ""}" onclick="openHotel(${i})">
+      <span class="hid">${esc(h.hotel_id)}</span>
+      <span class="meta">${esc(h.source_locale)} → ${esc(h.target_locale)} · ${total} 房型</span>
+      <span class="pills">
+        ${modelErr ? `<span class="pill err">模型问题 ${modelErr}</span>` : ""}
+        <span class="pill ${done === total ? "ok" : ""}">标注 ${done}/${total}</span>
+      </span></div>`;
+  }).join("");
+}
+
+function updateTopbarNav(){
+  const list = document.getElementById("btnToList");
+  const stats = document.getElementById("btnToStats");
+  if (list) list.classList.toggle("nav-active", activeMainView === "list");
+  if (stats) stats.classList.toggle("nav-active", activeMainView === "stats");
+}
+
+function hideAllMainViews(){
+  document.getElementById("listView").classList.add("hidden");
+  document.getElementById("statsView").classList.add("hidden");
+  document.getElementById("detailView").classList.add("hidden");
+}
+
+function showListView(){
+  activeMainView = "list";
+  hideAllMainViews();
+  document.getElementById("listView").classList.remove("hidden");
+  renderHotelList();
+  updateTopStat();
+  updateTopbarNav();
+}
+
+function showStatsView(){
+  activeMainView = "stats";
+  hideAllMainViews();
+  document.getElementById("statsView").classList.remove("hidden");
+  renderKpis();
+  renderGlobal601Table();
+  updateTopStat();
+  updateTopbarNav();
+}
+
+function openHotel(idx){
+  curHotelIdx = idx;
+  activeTab = "accuracy";
+  activeMainView = "detail";
+  localStorage.setItem(IDX_KEY, String(idx));
+  hideAllMainViews();
+  document.getElementById("detailView").classList.remove("hidden");
+  renderDetail();
+  loadFabNotes();
+  updateTopbarNav();
+}
+
+function navHotel(delta){
+  curHotelIdx = Math.max(0, Math.min(DATA.hotels.length - 1, curHotelIdx + delta));
+  activeTab = "accuracy";
+  localStorage.setItem(IDX_KEY, String(curHotelIdx));
+  renderDetail();
+  loadFabNotes();
+}
+
+function switchTab(tab){
+  activeTab=tab;
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.toggle("active",b.dataset.tab===tab));
+  document.getElementById("tabAccuracy").classList.toggle("hidden",tab!=="accuracy");
+  document.getElementById("tabConsistency").classList.toggle("hidden",tab!=="consistency");
+}
+
+function renderErrorsRoomLevel(errors){
+  const filtered=(errors||[]).filter(e=>!isHotelLevelError(e));
+  if(!filtered.length) return '<span class="no-error">✓ 无错误</span>';
+  return filtered.map(e=>{
+    const code=String(e.errorCode||"");
+    const bg=ERROR_COLORS[code]||"#718096";
+    return `<div class="error-item"><span class="badge" style="background:${bg}">${esc(code+" "+(e.errorType||""))}</span>${e.errorCount?`<span style="font-size:11px;color:#e53e3e">×${e.errorCount}</span>`:""}<div class="error-reason">${esc(e.reason||"")}</div></div>`;
+  }).join("");
+}
+
+function buildHighlightHtml(text, pairs, side, colorMap){
+  if(!text||!pairs.length) return esc(text);
+  const spans=[];
+  const folded=text.toLowerCase();
+  pairs.forEach((p,i)=>{
+    const color=colorMap[p.en]||HL_COLORS[i%HL_COLORS.length];
+    if(side==="src"){
+      const needle=p.enRaw||p.en;
+      let idx=0, pos=0;
+      const foldNeedle=needle.toLowerCase();
+      while((idx=folded.indexOf(foldNeedle,pos))>=0){
+        spans.push({start:idx,end:idx+needle.length,color});
+        pos=idx+needle.length;
+      }
+    }else{
+      const zh=p.zh;
+      if(!zh||zh.includes(BRACKET_EN_HINT)) return;
+      let idx=0, pos=0;
+      while((idx=text.indexOf(zh,pos))>=0){
+        spans.push({start:idx,end:idx+zh.length,color});
+        pos=idx+zh.length;
+      }
+    }
+  });
+  if(!spans.length) return esc(text);
+  spans.sort((a,b)=>a.start-b.start);
+  const merged=[];
+  for(const s of spans){
+    if(!merged.length||s.start>=merged[merged.length-1].end) merged.push({...s});
+    else merged[merged.length-1].end=Math.max(merged[merged.length-1].end,s.end);
+  }
+  let html="", last=0;
+  for(const s of merged){
+    if(s.start>last) html+=esc(text.slice(last,s.start));
+    html+=`<span class="tok-hl" style="background:${s.color}">${esc(text.slice(s.start,s.end))}</span>`;
+    last=s.end;
+  }
+  if(last<text.length) html+=esc(text.slice(last));
+  return html;
+}
+
+function renderDetail(){
+  const hotel=DATA.hotels[curHotelIdx];
+  const store=getStore();
+  document.getElementById("detailHeader").innerHTML=`
+    <a class="hotel-link" href="${HOTEL_URL(hotel.hotel_id)}" target="_blank">Hotel ${esc(hotel.hotel_id)}</a>
+    <span>${esc(hotel.source_locale)} → ${esc(hotel.target_locale)}</span>
+    <span class="pill">${hotel.rooms.length} 房型</span>
+    <div class="grow"></div>
+    <div class="nav">
+      <button class="btn" onclick="navHotel(-1)" ${curHotelIdx===0?"disabled":""}>‹</button>
+      <span class="idx">${curHotelIdx+1} / ${DATA.hotels.length}</span>
+      <button class="btn" onclick="navHotel(1)" ${curHotelIdx>=DATA.hotels.length-1?"disabled":""}>›</button>
+    </div>`;
+  renderTabAccuracy(hotel, store);
+  renderTabConsistency(hotel);
+  switchTab(activeTab);
+  updateTopStat();
+}
+
+function saveReview(uid,val){
+  const s=getStore();
+  if(!s[uid]) s[uid]={};
+  s[uid].review=val;
+  setStore(s);
+  renderDetail();
+  if(activeMainView==="list") renderHotelList();
+  if(activeMainView==="stats") renderKpis();
+  updateTopStat();
+}
+
+function saveComment(uid,val){
+  const s=getStore();
+  if(!s[uid]) s[uid]={};
+  s[uid].comment=val;
+  debounceSave(()=>setStore(s));
+}
+
+function saveTokenFix(hid, token, val){
+  const s = ensureHotelStore(hid);
+  s[hid].token_fixed[token] = val;
+  debounceSave(()=>{
+    setHotelStore(s);
+    if (activeMainView === "stats") renderGlobal601Table();
+  });
+}
+
+function buildGlobal601Groups(){
+  const tokenMap = {};
+  for (const hotel of DATA.hotels) {
+    for (const g of build601Groups(hotel)) {
+      const key = g.token.toLowerCase();
+      if (!tokenMap[key]) {
+        tokenMap[key] = { token: g.token, translations: {}, roomUids: new Set(), hotelIds: new Set() };
+      }
+      const agg = tokenMap[key];
+      for (const t of g.translations) {
+        agg.translations[t.zh] = (agg.translations[t.zh] || 0) + t.count;
+      }
+      for (const { room } of g.rooms) {
+        agg.roomUids.add(room.uid);
+        agg.hotelIds.add(hotel.hotel_id);
+      }
+    }
+  }
+  return Object.values(tokenMap).sort((a, b) => b.roomUids.size - a.roomUids.size);
+}
+
+function formatGlobalTokenFix(token, hs){
+  const tk = tokenKey(token);
+  const entries = [];
+  for (const hotel of DATA.hotels) {
+    const val = ((hs[hotel.hotel_id] || {}).token_fixed || {})[tk];
+    if (val && String(val).trim()) entries.push({ hid: hotel.hotel_id, val: String(val).trim() });
+  }
+  if (!entries.length) return "—";
+  const valToHids = new Map();
+  for (const { hid, val } of entries) {
+    if (!valToHids.has(val)) valToHids.set(val, []);
+    valToHids.get(val).push(hid);
+  }
+  if (valToHids.size === 1 && entries.length === 1) return entries[0].val;
+  const parts = [];
+  for (const [val, hids] of valToHids) {
+    if (hids.length >= 2) parts.push(val);
+    else parts.push(`${hids[0]}: ${val}`);
+  }
+  return parts.join("；");
+}
+
+function renderGlobal601Table(){
+  if (!DATA) return;
+  const hs = getHotelStore();
+  const groups = buildGlobal601Groups();
+  const rows = groups.map(g => {
+    const zhHtml = Object.entries(g.translations)
+      .sort((a, b) => b[1] - a[1])
+      .map(([zh, count]) => `<span class="zh-badge conflict">${esc(zh)} <em>×${count}</em></span>`)
+      .join(" ");
+    const fixText = formatGlobalTokenFix(g.token, hs);
+    return `<tr>
+      <td class="token-en">${esc(g.token)}</td>
+      <td>${zhHtml}</td>
+      <td>${esc(fixText)}</td>
+      <td>${g.hotelIds.size}</td>
+      <td>${g.roomUids.size}</td>
+    </tr>`;
+  });
+  document.getElementById("global601Table").innerHTML = rows.length
+    ? `<table class="sm-table"><thead><tr>
+        <th>分词</th><th>出现的翻译和次数</th><th>人工建议固化翻译</th><th>涉及酒店数</th><th>涉及房型数</th>
+      </tr></thead><tbody>${rows.join("")}</tbody></table>`
+    : `<div class="sm-empty">暂无 601 同分词翻译不一致数据</div>`;
+}
+
+function gotoNextIncomplete(){
+  if (!DATA) return;
+  const store = getStore();
+  for (let hi = 0; hi < DATA.hotels.length; hi++) {
+    for (const room of DATA.hotels[hi].rooms) {
+      if (!getEffectiveReview(room, store)) {
+        openHotel(hi);
+        switchTab("accuracy");
+        const u = uidJs(room.uid);
+        requestAnimationFrame(() => {
+          const tr = document.querySelector(`tr[data-uid="${u}"]`);
+          tr?.scrollIntoView({ behavior: "smooth", block: "center" });
+        });
+        return;
+      }
+    }
+  }
+  alert("全部房型已标注完成");
+}
+
+function confirmImportNew(){
+  const msg = "导入新文件将清空当前浏览器中的验收数据（标注、备注、进度等）。\n\n建议先点击「导出标注版 HTML」保存进度。\n\n确定要导入新文件吗？";
+  if (!confirm(msg)) return;
+  goImportNew();
+}
+
+function goImportNew(){
+  DATA = null;
+  curHotelIdx = 0;
+  activeTab = "accuracy";
+  activeMainView = "list";
+  hotelSearchQuery = "";
+  const searchEl = document.getElementById("hotelSearchInput");
+  if (searchEl) searchEl.value = "";
+  localStorage.removeItem(STORE_KEY);
+  localStorage.removeItem(HOTEL_STORE_KEY);
+  localStorage.removeItem(GLOBAL_NOTES_KEY);
+  localStorage.removeItem(PAYLOAD_KEY);
+  localStorage.removeItem(HASH_KEY);
+  localStorage.removeItem(IDX_KEY);
+  document.getElementById("mainTopbar").style.display = "none";
+  hideAllMainViews();
+  document.getElementById("uploadView").classList.remove("hidden");
+  document.getElementById("uploadErr").classList.add("hidden");
+  document.getElementById("uploadFileInfo").innerHTML = "";
+  document.getElementById("fabPanel").classList.remove("open");
+  document.getElementById("snapshotBanner").style.display = "none";
+  document.getElementById("fileInput").value = "";
+  resetMergeWizard();
+  initMergeWizard();
+}
+
+function isHotelReviewDone(hotel, store){
+  return hotel.rooms.every(r => getEffectiveReview(r, store));
+}
+
+function mergeDupDomId(key){
+  return "dup_" + String(key).replace(/[^a-zA-Z0-9_]/g, "_");
+}
+
+async function parseQeSnapshotHtmlFile(file){
+  const text = await file.text();
+  const doc = new DOMParser().parseFromString(text, "text/html");
+  const snapRaw = doc.getElementById("preloadedSnapshot")?.textContent?.trim();
+  if (!snapRaw || snapRaw === "__PRELOADED_SNAPSHOT__") throw new Error("不是有效的验收快照（缺少 preloadedSnapshot）");
+  let snap;
+  try { snap = JSON.parse(snapRaw); } catch(e) { throw new Error("验收进度解析失败"); }
+  if (!snap.payload?.hotels?.length) throw new Error("快照中无酒店数据");
+  return { fileName: file.name, snap };
+}
+
+function collectMergeHotelCandidates(okSnaps){
+  const out = [];
+  okSnaps.forEach((item, fileIndex) => {
+    item.snap.payload.hotels.forEach((hotel, hotelIndex) => {
+      out.push({
+        key: `${fileIndex}:${hotel.hotel_id}`,
+        fileIndex, hotelIndex,
+        fileName: item.fileName,
+        hotel,
+        store: item.snap.store || {},
+        hotelStore: item.snap.hotel || {},
+        globalNotes: item.snap.globalNotes || ""
+      });
+    });
+  });
+  return out;
+}
+
+function buildDuplicateHotelGroups(candidates){
+  const byId = new Map();
+  for (const c of candidates) {
+    if (!byId.has(c.hotel.hotel_id)) byId.set(c.hotel.hotel_id, []);
+    byId.get(c.hotel.hotel_id).push(c);
+  }
+  return [...byId.entries()].filter(([, items]) => items.length > 1).map(([hotel_id, items]) => ({ hotel_id, items }));
+}
+
+function validateDupHotelSelections(dupGroups){
+  for (const g of dupGroups) {
+    const any = g.items.some(it => {
+      const cb = document.getElementById(mergeDupDomId(it.key));
+      return cb && cb.checked;
+    });
+    if (!any) return g.hotel_id;
+  }
+  return null;
+}
+
+function getSelectedMergeCandidates(dupGroups, candidates){
+  const selectedDup = new Set();
+  for (const g of dupGroups) {
+    for (const it of g.items) {
+      const cb = document.getElementById(mergeDupDomId(it.key));
+      if (cb && cb.checked) selectedDup.add(it.key);
+    }
+  }
+  const inDup = new Set();
+  dupGroups.forEach(g => g.items.forEach(it => inDup.add(it.key)));
+  return candidates.filter(c => !inDup.has(c.key) || selectedDup.has(c.key));
+}
+
+async function mergeSelectedHotels(selected){
+  const hotels = [];
+  const mergedStore = {};
+  const mergedHotelStore = {};
+  const notes = new Set();
+  for (const c of selected) {
+    hotels.push(JSON.parse(JSON.stringify(c.hotel)));
+    for (const r of c.hotel.rooms) {
+      if (c.store[r.uid]) mergedStore[r.uid] = JSON.parse(JSON.stringify(c.store[r.uid]));
+    }
+    const hid = c.hotel.hotel_id;
+    if (c.hotelStore[hid]) mergedHotelStore[hid] = JSON.parse(JSON.stringify(c.hotelStore[hid]));
+    if (c.globalNotes?.trim()) notes.add(c.globalNotes.trim());
+  }
+  const payload = { hotels };
+  payload.payloadHash = await sha1Hex(JSON.stringify(payload));
+  return {
+    payload,
+    store: mergedStore,
+    hotelStore: mergedHotelStore,
+    globalNotes: [...notes].join("\n\n---\n\n")
+  };
+}
+
+async function applyMergedQeData({ payload, store, hotelStore, globalNotes }){
+  DATA = payload;
+  setStore(store);
+  setHotelStore(hotelStore);
+  if (globalNotes) localStorage.setItem(GLOBAL_NOTES_KEY, globalNotes);
+  else localStorage.removeItem(GLOBAL_NOTES_KEY);
+  localStorage.setItem(PAYLOAD_KEY, JSON.stringify(payload));
+  localStorage.setItem(HASH_KEY, payload.payloadHash);
+  applyDefaultReviews();
+  curHotelIdx = 0;
+  localStorage.setItem(IDX_KEY, "0");
+  document.getElementById("mainTopbar").style.display = "";
+  document.getElementById("uploadView").classList.add("hidden");
+  showListView();
+}
+
+function renderMergeFileList(){
+  const listEl = document.getElementById("mergeFileList");
+  const mergeBtn = document.getElementById("mergeBtn");
+  if (!listEl) return;
+  const okCount = mergeParsedList.filter(r => r.ok).length;
+  if (!mergeParsedList.length) {
+    listEl.innerHTML = "";
+    if (mergeBtn) mergeBtn.disabled = true;
+    return;
+  }
+  listEl.innerHTML = mergeParsedList.map(r => {
+    if (r.ok) {
+      return `<div class="merge-file-item ok">✅ <b>${esc(r.fileName)}</b> — ${r.snap.payload.hotels.length} 个酒店</div>`;
+    }
+    return `<div class="merge-file-item err">❌ <b>${esc(r.fileName)}</b> — ${esc(r.error)}</div>`;
+  }).join("");
+  if (mergeBtn) mergeBtn.disabled = okCount < 1;
+}
+
+function renderMergeDupPanel(){
+  const panel = document.getElementById("mergeDupPanel");
+  const table = document.getElementById("mergeDupTable");
+  if (!panel || !table) return;
+  const okSnaps = mergeParsedList.filter(r => r.ok);
+  const candidates = collectMergeHotelCandidates(okSnaps);
+  const dupGroups = buildDuplicateHotelGroups(candidates);
+  if (!dupGroups.length) {
+    panel.classList.remove("visible");
+    table.innerHTML = "";
+    return;
+  }
+  panel.classList.add("visible");
+  const firstSeen = new Set();
+  table.innerHTML = dupGroups.map(g => {
+    const rows = g.items.map(it => {
+      const isFirst = !firstSeen.has(g.hotel_id);
+      if (isFirst) firstSeen.add(g.hotel_id);
+      const done = isHotelReviewDone(it.hotel, it.store);
+      const status = done ? '<span class="pill-done">已完成</span>' : '<span class="pill-todo">未完成</span>';
+      return `<div class="dup-row"><label><input type="checkbox" id="${mergeDupDomId(it.key)}" ${isFirst ? "checked" : ""}>
+        <span>${esc(it.fileName)} · ${it.hotel.rooms.length} 房型 ${status}</span></label></div>`;
+    }).join("");
+    return `<div class="dup-group"><h5>hotel_id: ${esc(g.hotel_id)}</h5>${rows}</div>`;
+  }).join("");
+}
+
+function resetMergeWizard(){
+  mergeParsedList = [];
+  const listEl = document.getElementById("mergeFileList");
+  const panel = document.getElementById("mergeDupPanel");
+  const table = document.getElementById("mergeDupTable");
+  const mergeErr = document.getElementById("mergeErr");
+  const mergeBtn = document.getElementById("mergeBtn");
+  const mergeInput = document.getElementById("mergeFilesInput");
+  if (listEl) listEl.innerHTML = "";
+  if (panel) panel.classList.remove("visible");
+  if (table) table.innerHTML = "";
+  if (mergeErr) mergeErr.innerHTML = "";
+  if (mergeBtn) {
+    mergeBtn.disabled = true;
+    mergeBtn.textContent = "开始合并并打开 ▶";
+  }
+  if (mergeInput) mergeInput.value = "";
+}
+
+function initMergeWizard(){
+  const mergeInput = document.getElementById("mergeFilesInput");
+  const mergeErr = document.getElementById("mergeErr");
+  const mergeBtn = document.getElementById("mergeBtn");
+  if (!mergeInput || !mergeBtn) return;
+  if (_mergeWizardHandlersBound) return;
+  _mergeWizardHandlersBound = true;
+
+  mergeInput.onchange = async (e) => {
+    if (mergeErr) mergeErr.innerHTML = "";
+    const files = Array.from(e.target.files || []);
+    if (!files.length) {
+      mergeParsedList = [];
+      renderMergeFileList();
+      renderMergeDupPanel();
+      return;
+    }
+    mergeParsedList = [];
+    for (const file of files) {
+      try {
+        const parsed = await parseQeSnapshotHtmlFile(file);
+        mergeParsedList.push({ ok: true, fileName: file.name, snap: parsed.snap });
+      } catch(err) {
+        mergeParsedList.push({ ok: false, fileName: file.name, error: err.message });
+      }
+    }
+    renderMergeFileList();
+    renderMergeDupPanel();
+    mergeInput.value = "";
+  };
+
+  mergeBtn.onclick = async () => {
+    const okSnaps = mergeParsedList.filter(r => r.ok);
+    if (!okSnaps.length) {
+      if (mergeErr) mergeErr.innerHTML = `<div class="err-box">请先选择至少一个有效快照。</div>`;
+      return;
+    }
+    const candidates = collectMergeHotelCandidates(okSnaps);
+    const dupGroups = buildDuplicateHotelGroups(candidates);
+    const blocked = validateDupHotelSelections(dupGroups);
+    if (blocked) {
+      if (mergeErr) mergeErr.innerHTML = `<div class="err-box">hotel_id「${esc(blocked)}」至少需勾选一条保留。</div>`;
+      return;
+    }
+    if (mergeErr) mergeErr.innerHTML = "";
+    const selected = getSelectedMergeCandidates(dupGroups, candidates);
+    if (!selected.length) {
+      if (mergeErr) mergeErr.innerHTML = `<div class="err-box">未选择任何酒店条目。</div>`;
+      return;
+    }
+    mergeBtn.disabled = true;
+    mergeBtn.textContent = "合并中…";
+    try {
+      const merged = await mergeSelectedHotels(selected);
+      await applyMergedQeData(merged);
+    } catch(err) {
+      if (mergeErr) mergeErr.innerHTML = `<div class="err-box">❌ ${esc(err.message)}</div>`;
+      mergeBtn.disabled = false;
+      mergeBtn.textContent = "开始合并并打开 ▶";
+    }
+  };
+}
+
+function renderTabAccuracy(hotel,store){
+  const sortedRooms=[...hotel.rooms].sort((a,b)=>a.sourceText.toLowerCase().localeCompare(b.sourceText.toLowerCase()));
+  const rows=sortedRooms.map(room=>{
+    const rv=(store[room.uid]||{}).review||getDefaultReview(room)||"";
+    const comment=(store[room.uid]||{}).comment||"";
+    const pairs=parseMatchToken(room.matchToken);
+    const colorMap={};
+    pairs.forEach((p,i)=>{ if(!colorMap[p.en]) colorMap[p.en]=HL_COLORS[Object.keys(colorMap).length%HL_COLORS.length]; });
+    const u=uidJs(room.uid);
+    const rowCls=(hasModelRoomError(room)?"row-model-err":"")+(rv===REVIEW.WRONG?" row-human-err":"");
+    const srcPlain=esc(room.sourceText);
+    const tgtPlain=esc(room.targetText);
+    const srcHl=buildHighlightHtml(room.sourceText,pairs,"src",colorMap);
+    const tgtHl=buildHighlightHtml(room.targetText,pairs,"tgt",colorMap);
+    return `<tr class="${rowCls.trim()}" data-uid="${u}" onmouseenter="hlRow('${u}',true)" onmouseleave="hlRow('${u}',false)">
+      <td class="col-rk">${esc(room.resourceKey)}</td>
+      <td class="text-cell"><span class="plain">${srcPlain}</span><span class="hl hidden">${srcHl}</span></td>
+      <td class="text-cell"><span class="plain">${tgtPlain}</span><span class="hl hidden">${tgtHl}</span></td>
+      <td class="col-review">
+        <label class="radio-label"><input type="radio" name="rv_${u}" value="${REVIEW.CORRECT}" ${rv===REVIEW.CORRECT?"checked":""} onchange="saveReview('${room.uid}','${REVIEW.CORRECT}')"> 正确</label>
+        <label class="radio-label"><input type="radio" name="rv_${u}" value="${REVIEW.WRONG}" ${rv===REVIEW.WRONG?"checked":""} onchange="saveReview('${room.uid}','${REVIEW.WRONG}')"> 错误</label>
+      </td>
+      <td><textarea rows="2" placeholder="备注…" oninput="saveComment('${room.uid}',this.value)">${esc(comment)}</textarea></td>
+      <td>${renderErrorsRoomLevel(room.errorList)}</td>
+    </tr>`;
+  }).join("");
+  document.getElementById("tabAccuracy").innerHTML=`
+    <div class="table-wrap"><table class="room-table"><thead><tr>
+      <th class="col-rk">母基id</th><th>原名</th><th>译名</th><th class="col-review">人工核验翻译是否准确</th><th>备注</th><th>模型质检结果</th>
+    </tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function hlRow(uid,on){
+  const tr=document.querySelector(`tr[data-uid="${uid}"]`);
+  if(!tr) return;
+  tr.querySelectorAll(".plain").forEach(el=>el.classList.toggle("hidden",on));
+  tr.querySelectorAll(".hl").forEach(el=>el.classList.toggle("hidden",!on));
+}
+
+function build601Groups(hotel){
+  const eligible = hotel.rooms;
+  const rooms601 = eligible.filter(r => (r.errorList || []).some(e => String(e.errorCode) === "601"));
+  if (!rooms601.length) return [];
+  const agg = {};
+  for (const room of eligible) {
+    for(const p of parseMatchToken(room.matchToken)){
+      if(p.zh.includes(BRACKET_EN_HINT)) continue;
+      if(!agg[p.en]) agg[p.en]={token:p.en, translations:{}};
+      if(!agg[p.en].translations[p.zh]) agg[p.en].translations[p.zh]=[];
+      const exists=agg[p.en].translations[p.zh].some(x=>x.uid===room.uid);
+      if(!exists) agg[p.en].translations[p.zh].push(room);
+    }
+  }
+  const groups=[];
+  for(const g of Object.values(agg)){
+    const zhs=Object.keys(g.translations);
+    if(zhs.length<2) continue;
+    const has601=zhs.some(zh=>g.translations[zh].some(r=>(r.errorList||[]).some(e=>String(e.errorCode)==="601")));
+    if(!has601) continue;
+    const roomSet=new Map();
+    zhs.forEach(zh=>g.translations[zh].forEach(r=>{
+      if(!roomSet.has(r.uid)){
+        const err601=(r.errorList||[]).find(e=>String(e.errorCode)==="601");
+        roomSet.set(r.uid,{room:r,reason:err601?err601.reason:"",zh});
+      }
+    }));
+    groups.push({
+      token:g.token,
+      translations:zhs.map(zh=>({zh,count:g.translations[zh].length,rooms:g.translations[zh]})),
+      rooms:[...roomSet.values()]
+    });
+  }
+  groups.sort((a,b)=>b.rooms.length-a.rooms.length);
+  return groups;
+}
+
+function highlightTokenInText(text, token, zh, side){
+  if(!text) return esc(text);
+  if(side==="src"&&token){
+    const re=new RegExp(token.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"i");
+    const m=text.match(re);
+    if(!m) return esc(text);
+    const idx=m.index, end=idx+m[0].length;
+    return esc(text.slice(0,idx))+`<mark style="background:#fef08a">${esc(text.slice(idx,end))}</mark>`+esc(text.slice(end));
+  }
+  if(side==="tgt"&&zh&&!zh.includes(BRACKET_EN_HINT)){
+    const idx=text.indexOf(zh);
+    if(idx<0) return esc(text);
+    return esc(text.slice(0,idx))+`<mark style="background:#bfdbfe">${esc(zh)}</mark>`+esc(text.slice(idx+zh.length));
+  }
+  return esc(text);
+}
+
+function render601Panel(hotel, hid){
+  const groups = build601Groups(hotel);
+  const hs=getHotelStore()[hotel.hotel_id]||{token_fixed:{}};
+  if(!groups.length) return `<details class="submodule"><summary class="sm-summary">601 同分词翻译不一致 <span class="sm-count">0</span></summary><div class="sm-body"><div class="sm-empty">无该类错误</div></div></details>`;
+  const body=groups.map(g=>{
+    const tk=tokenKey(g.token);
+    const zhBadges=g.translations.map(t=>`<span class="zh-badge conflict">${esc(t.zh)} <em>×${t.count}</em></span>`).join(" ");
+    const sortedRoomEntries=[...g.rooms].sort((a,b)=>a.room.sourceText.toLowerCase().localeCompare(b.room.sourceText.toLowerCase()));
+    const roomRows=sortedRoomEntries.map(({room,reason,zh})=>{
+      const pair=parseMatchToken(room.matchToken).find(p=>p.en===g.token);
+      const zhUse=pair?pair.zh:zh;
+      return `<tr>
+        <td>${esc(room.resourceKey)}</td>
+        <td>${highlightTokenInText(room.sourceText,g.token,null,"src")}</td>
+        <td>${highlightTokenInText(room.targetText,g.token,zhUse,"tgt")}</td>
+        <td class="error-reason">${esc(reason)}</td>
+      </tr>`;
+    }).join("");
+    return `<div class="token-panel">
+      <h4 class="token-title">分词：${esc(g.token)}</h4>
+      <div class="token-row-grid"><div class="token-en">${esc(g.token)}</div><div>${zhBadges}</div>
+        <div><input type="text" class="token-fix-input" placeholder="建议固化翻译…" value="${esc(hs.token_fixed[tk]||"")}" oninput="saveTokenFix('${hotel.hotel_id}','${tk}',this.value)"></div></div>
+      <details class="token-rooms-details" open>
+        <summary class="token-rooms-summary">房型列表（${g.rooms.length}）</summary>
+        <table class="sm-table" style="margin-top:4px"><thead><tr><th>母基id</th><th>原名</th><th>译名</th><th>reason</th></tr></thead><tbody>${roomRows}</tbody></table>
+      </details>
+    </div>`;
+  }).join("");
+  return `<details class="submodule" open><summary class="sm-summary">601 同分词翻译不一致 <span class="sm-count">${groups.length}</span></summary><div class="sm-body">${body}</div></details>`;
+}
+
+function renderErrorCodePanel(hotel, code, title){
+  const eligible = hotel.rooms;
+  const hits=[];
+  for(const room of eligible){
+    for(const e of room.errorList||[]){
+      if(String(e.errorCode)===code){ hits.push({room,reason:e.reason||""}); break; }
+    }
+  }
+  const open=hits.length?"open":"";
+  if(!hits.length){
+    return `<details class="submodule"><summary class="sm-summary">${esc(title)} <span class="sm-count">0</span></summary><div class="sm-body"><div class="sm-empty">无该类错误</div></div></details>`;
+  }
+  const rows=hits.map(({room,reason})=>`<tr>
+    <td>${esc(room.resourceKey)}</td><td>${esc(room.sourceText)}</td><td>${esc(room.targetText)}</td><td class="error-reason">${esc(reason)}</td></tr>`).join("");
+  return `<details class="submodule" ${open}><summary class="sm-summary">${esc(title)} <span class="sm-count">${hits.length}</span></summary>
+    <div class="sm-body"><table class="sm-table"><thead><tr><th>母基id</th><th>原名</th><th>译名</th><th>reason</th></tr></thead><tbody>${rows}</tbody></table></div></details>`;
+}
+
+function renderTabConsistency(hotel){
+  const hid = hotel.hotel_id;
+  let html = render601Panel(hotel, hid);
+  for (const t of CONSISTENCY_TABS.slice(1)) {
+    html += renderErrorCodePanel(hotel, t.code, t.title);
+  }
+  document.getElementById("tabConsistency").innerHTML = html;
+}
+
+function updateTopStat(){
+  if(!DATA) return;
+  const s=computeStats();
+  document.getElementById("topStat").textContent=`${DATA.hotels.length} 酒店 · ${s.totalRooms} 房型 · 已标注 ${s.reviewedCount}`;
+}
+
+function loadFabNotes(){
+  const gn=localStorage.getItem(GLOBAL_NOTES_KEY)||"";
+  document.getElementById("globalNotes").value=gn;
+  const hotel=DATA&&DATA.hotels[curHotelIdx];
+  if(hotel){
+    const hs=getHotelStore()[hotel.hotel_id];
+    document.getElementById("hotelNotes").value=(hs&&hs.notes)||"";
+  }
+}
+
+document.getElementById("fabBtn").onclick=()=>{
+  document.getElementById("fabPanel").classList.toggle("open");
+};
+document.getElementById("globalNotes").oninput=function(){
+  debounceSave(()=>localStorage.setItem(GLOBAL_NOTES_KEY,this.value));
+};
+document.getElementById("hotelNotes").oninput=function(){
+  const hotel=DATA.hotels[curHotelIdx];
+  if(!hotel) return;
+  const s=ensureHotelStore(hotel.hotel_id);
+  s[hotel.hotel_id].notes=this.value;
+  debounceSave(()=>setHotelStore(s));
+};
+
+function csvEscape(v){
+  if(v==null) return "";
+  const s=String(v);
+  return (s.includes(",")||s.includes('"')||s.includes("\n"))?('"'+s.replace(/"/g,'""')+'"'):s;
+}
+
+function build601ExportRows(){
+  const hs = getHotelStore();
+  const groups = buildGlobal601Groups();
+  const header = ["分词", "出现的翻译和次数", "人工建议固化翻译", "涉及酒店数", "涉及房型数"];
+  const rows = groups.map(g => {
+    const transText = Object.entries(g.translations)
+      .sort((a, b) => b[1] - a[1])
+      .map(([zh, count]) => `${zh} ×${count}`)
+      .join("；");
+    const fixText = formatGlobalTokenFix(g.token, hs);
+    return [g.token, transText, fixText === "—" ? "" : fixText, g.hotelIds.size, g.roomUids.size];
+  });
+  return [header, ...rows];
+}
+
+function exportCSV(){
+  if(!DATA) return;
+  const store=getStore(), hs=getHotelStore();
+  const cols=["hotel_id","source_locale","target_locale","resourceKey","sourceText","targetText","review","comment","model_has_101_201_301","token_fixed","hotel_notes","global_notes"];
+  const gnotes=localStorage.getItem(GLOBAL_NOTES_KEY)||"";
+  const rows=[cols];
+  for(const h of DATA.hotels){
+    const tf=JSON.stringify((hs[h.hotel_id]||{}).token_fixed||{});
+    const hnotes=(hs[h.hotel_id]||{}).notes||"";
+    const sortedRooms=[...h.rooms].sort((a,b)=>a.sourceText.toLowerCase().localeCompare(b.sourceText.toLowerCase()));
+    for(const r of sortedRooms){
+      const saved=store[r.uid]||{};
+      rows.push([
+        h.hotel_id,h.source_locale,h.target_locale,r.resourceKey,
+        r.sourceText,r.targetText,
+        saved.review||"",saved.comment||"",
+        hasModelRoomError(r)?"Y":"N",
+        tf,hnotes,gnotes
+      ]);
+    }
+  }
+  const ws1=XLSX.utils.aoa_to_sheet(rows);
+  const ws2=XLSX.utils.aoa_to_sheet(build601ExportRows());
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws1, "房型标注");
+  XLSX.utils.book_append_sheet(wb, ws2, "601同分词汇总");
+  const fname=`房型译名质检_标注_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+function exportAnnotatedHTML(){
+  const snapshot={
+    exportedAt:new Date().toLocaleString("zh-CN",{hour12:false}),
+    payload:DATA,
+    store:getStore(),
+    hotel:getHotelStore(),
+    globalNotes:localStorage.getItem(GLOBAL_NOTES_KEY)||""
+  };
+  const payload=JSON.stringify(snapshot).replace(/<\/script>/gi,"<\\/script>").replace(/\u2028/g,"\\u2028").replace(/\u2029/g,"\\u2029");
+  let html="<!DOCTYPE html>\n"+document.documentElement.outerHTML;
+  html=html.replace(/(<script id="preloadedSnapshot"[^>]*>)([\s\S]*?)(<\/script>)/,`$1${payload}$3`);
+  const blob=new Blob(["\uFEFF"+html],{type:"text/html;charset=utf-8"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`房型译名质检_标注版_${new Date().toISOString().slice(0,10)}.html`;
+  a.click();
+}
+
+function applyPreloadedSnapshot(){
+  const el=document.getElementById("preloadedSnapshot");
+  if(!el) return;
+  const raw=el.textContent.trim();
+  if(!raw||raw==="__PRELOADED_SNAPSHOT__") return;
+  let snap;
+  try{ snap=JSON.parse(raw); }catch(e){ return; }
+  if(snap.payload) {
+    DATA=snap.payload;
+    localStorage.setItem(PAYLOAD_KEY, JSON.stringify(snap.payload));
+    if(snap.payload.payloadHash) localStorage.setItem(HASH_KEY, snap.payload.payloadHash);
+  }
+  if(snap.store) setStore(snap.store);
+  if(snap.hotel) setHotelStore(snap.hotel);
+  if(snap.globalNotes!=null) localStorage.setItem(GLOBAL_NOTES_KEY,snap.globalNotes);
+  const banner=document.getElementById("snapshotBanner");
+  if(banner&&DATA){
+    banner.style.display="block";
+    document.getElementById("snapshotTime").textContent=snap.exportedAt||"";
+  }
+}
+
+function isTypingTarget(el){
+  if (!el) return false;
+  const tag = el.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+}
+
+function onKeyDown(e){
+  if (!DATA || document.getElementById("detailView").classList.contains("hidden")) return;
+  if (isTypingTarget(document.activeElement)) return;
+  if (e.key === "ArrowLeft") { e.preventDefault(); navHotel(-1); }
+  else if (e.key === "ArrowRight") { e.preventDefault(); navHotel(1); }
+}
+
+function boot(){
+  applyPreloadedSnapshot();
+  document.addEventListener("keydown", onKeyDown);
+  initMergeWizard();
+  const fi=document.getElementById("fileInput");
+  fi.onchange=e=>{ if(e.target.files[0]) handleFile(e.target.files[0]); };
+  const zone=document.getElementById("uploadZone");
+  zone.onclick=()=>fi.click();
+  zone.ondragover=e=>{ e.preventDefault(); zone.style.borderColor="var(--primary)"; };
+  zone.ondragleave=()=>{ zone.style.borderColor="#cbd5e1"; };
+  zone.ondrop=e=>{ e.preventDefault(); zone.style.borderColor="#cbd5e1"; if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); };
+  if(!DATA){
+    try{
+      const p=localStorage.getItem(PAYLOAD_KEY);
+      if(p){
+        DATA=JSON.parse(p);
+        applyDefaultReviews();
+        curHotelIdx=parseInt(localStorage.getItem(IDX_KEY)||"0",10)||0;
+        document.getElementById("mainTopbar").style.display="";
+        document.getElementById("uploadView").classList.add("hidden");
+        showListView();
+        return;
+      }
+    }catch(e){}
+  }
+  if(DATA){
+    document.getElementById("mainTopbar").style.display="";
+    document.getElementById("uploadView").classList.add("hidden");
+    applyDefaultReviews();
+    showListView();
+  }
+}
+boot();
+</script>
+</body>
+</html>
