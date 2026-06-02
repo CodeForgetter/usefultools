@@ -322,6 +322,7 @@ const CONSISTENCY_TABS = [
   {code:"605",title:"605 翻译风格不一致"}
 ];
 const BRACKET_EN_HINT = "括号内英文";
+const MISSING_ZH = "(未译)";
 const HOTEL_URL = id => `https://hotels.ctrip.com/hotels/${id}.html#ctm_ref=chp_htl_3_n`;
 
 let DATA = null;
@@ -438,6 +439,150 @@ function findTargetZhSpans(text, zh){
     if(spans.length) break;
   }
   return spans;
+}
+
+function normTokenKey(en){
+  return String(en||"").toLowerCase().replace(/\s+/g,"");
+}
+
+function zhKeyFor601(zh){
+  const core=extractZhForHighlight(zh);
+  return core||String(zh||"").trim();
+}
+
+function parseMatchTokenExtended(str){
+  const pairs=[], nullTokens=[];
+  if(!str) return {pairs, nullTokens};
+  for(const seg of String(str).split(/[，,;；]/)){
+    const s=seg.trim();
+    if(!s) continue;
+    const m=s.split(/[：:]/);
+    if(m.length<2) continue;
+    const enRaw=m[0].trim(), zh=m.slice(1).join(":").trim();
+    if(!enRaw) continue;
+    if(["Addition","Omission","Mistranslation"].includes(enRaw)) continue;
+    const en=normTokenKey(enRaw);
+    if(!zh||zh.toLowerCase()==="null"){
+      nullTokens.push({en, enRaw});
+      continue;
+    }
+    if(zh.includes(BRACKET_EN_HINT)) continue;
+    pairs.push({en, enRaw, zh, zhKey: zhKeyFor601(zh)});
+  }
+  return {pairs, nullTokens};
+}
+
+function extract601TokenClauses(reason){
+  const results=[];
+  if(!reason) return results;
+  const re=/英文\s*token\s*(?:为|是)\s*([^。.\n]+)/gi;
+  let m;
+  while((m=re.exec(reason))!==null){
+    results.push({clause:m[0], tokenValue:m[1].trim()});
+  }
+  if(!results.length){
+    const re2=/token\s*(?:为|是)\s*([^。.\n]+)/gi;
+    while((m=re2.exec(reason))!==null){
+      results.push({clause:m[0], tokenValue:m[1].trim()});
+    }
+  }
+  return results;
+}
+
+function extract601TokenFromReason(reason){
+  const clauses=extract601TokenClauses(reason);
+  if(!clauses.length) return null;
+  let t=clauses[0].tokenValue.replace(/^["'「""]|["'」""]$/g,"");
+  t=t.replace(/（[^）]*）/g,"").replace(/\([^)]*\)/g,"").trim();
+  return t&&t.length<50?t:null;
+}
+
+function normalize601ReasonToken(tokenValue){
+  return String(tokenValue||"").replace(/^["'「""]|["'」""]$/g,"").trim();
+}
+
+function reasonTokenNorm(tokenValue){
+  const t=normalize601ReasonToken(tokenValue);
+  const core=t.split(/[（(]/)[0].trim()||t;
+  return normTokenKey(core);
+}
+
+/** reason 中的 xxx 是否对应 matchToken 某条目 */
+function tokenValueMatchesEntry(tokenValue, enRaw, norm){
+  if(!tokenValue) return false;
+  const tv=normalize601ReasonToken(tokenValue);
+  const tvLower=tv.toLowerCase();
+  const tvFold=normTokenKey(tv);
+  const raw=String(enRaw||"").toLowerCase();
+  const entryNorm=norm||normTokenKey(enRaw);
+  if(raw&&tvLower.includes(raw)) return true;
+  if(entryNorm&&tvFold.includes(entryNorm)) return true;
+  if(raw&&tvFold.includes(normTokenKey(raw))) return true;
+  const tvCore=tv.replace(/（[^）]*）/g,"").replace(/\([^)]*\)/g,"").trim();
+  if(raw&&tvCore.toLowerCase()===raw) return true;
+  if(entryNorm&&normTokenKey(tvCore)===entryNorm) return true;
+  return false;
+}
+
+/** 房型 matchToken 中该 reason 分词的译法（strict，仅 matchToken） */
+function roomHasMatchTokenForReasonToken(room, reasonTokenXxx){
+  if(!reasonTokenXxx) return null;
+  for(const entry of getMatchTokenEntries(room)){
+    if(tokenValueMatchesEntry(reasonTokenXxx, entry.enRaw, entry.norm))
+      return matchTokenNormInRoom(room, entry.norm, true);
+  }
+  return matchTokenNormInRoom(room, reasonTokenNorm(reasonTokenXxx), true);
+}
+
+function getMatchTokenEntries(room){
+  const {pairs, nullTokens}=parseMatchTokenExtended(room.matchToken);
+  const entries=[], seen=new Set();
+  function add(enRaw, norm){
+    if(!norm||seen.has(norm)) return;
+    seen.add(norm);
+    entries.push({norm, enRaw});
+  }
+  for(const p of pairs) add(p.enRaw, p.en);
+  for(const nt of nullTokens) add(nt.enRaw, nt.en);
+  const segs=[...pairs.map(p=>({enRaw:p.enRaw, en:p.en})), ...nullTokens.map(nt=>({enRaw:nt.enRaw, en:nt.en}))];
+  for(let i=0;i<segs.length;i++){
+    for(let j=i+1;j<=Math.min(i+3,segs.length);j++){
+      const combined=segs.slice(i,j).map(x=>x.enRaw).join(" ");
+      add(combined, normTokenKey(combined));
+    }
+  }
+  return entries;
+}
+
+function matchTokenNormInRoom(room, norm, strict=false){
+  const {pairs, nullTokens}=parseMatchTokenExtended(room.matchToken);
+  for(const p of pairs){
+    if(p.en===norm) return {enRaw:p.enRaw, zh:p.zh, zhKey:p.zhKey};
+  }
+  for(const nt of nullTokens){
+    if(nt.en===norm) return {enRaw:nt.enRaw, zh:MISSING_ZH, zhKey:MISSING_ZH};
+  }
+  const segs=[...pairs, ...nullTokens.map(nt=>({...nt, zh:MISSING_ZH, zhKey:MISSING_ZH}))];
+  for(let i=0;i<segs.length;i++){
+    for(let j=i+1;j<=Math.min(i+3,segs.length);j++){
+      const slice=segs.slice(i,j);
+      const combined=slice.map(x=>x.enRaw).join(" ");
+      if(normTokenKey(combined)===norm){
+        const zh=slice.map(x=>x.zh).filter(z=>z&&z!==MISSING_ZH).join("+")||MISSING_ZH;
+        return {enRaw:combined, zh, zhKey:zhKeyFor601(zh)};
+      }
+    }
+  }
+  if(!strict&&room.sourceText){
+    const foldSrc=room.sourceText.toLowerCase().replace(/\s+/g,"");
+    if(foldSrc.includes(norm)){
+      for(const p of pairs){
+        if(norm.includes(p.en)||p.en.includes(norm)) return {enRaw:p.enRaw, zh:p.zh, zhKey:p.zhKey};
+      }
+      return {enRaw:norm, zh:MISSING_ZH, zhKey:MISSING_ZH};
+    }
+  }
+  return null;
 }
 
 function parseMatchToken(str){
@@ -834,15 +979,28 @@ function renderErrorCodeDetail(){
   }
   const bg = ERROR_COLORS[item.code] || "#718096";
   const rows = item.rooms.map((r, idx) => {
+    const u = "ec_" + uidJs(`${r.hotel_id}_${r.resourceKey}_${idx}`);
+    const roomUidEsc = String(r.uid).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
+    if (selectedErrorCode === "601") {
+      const token = extract601TokenFromReason(r.reason) || "";
+      const hit = token ? roomHasMatchTokenForReasonToken(r, token) : null;
+      srcHl = highlight601MatchToken(r.sourceText, hit, "src");
+      tgtHl = highlight601MatchToken(r.targetText, hit, "tgt");
+      return `<tr class="ecode-jump-row" title="点击进入酒店验收" onclick="openHotelRoom('${roomUidEsc}')">
+    <td class="col-hid">${esc(r.hotel_id)}</td>
+    <td class="col-rid">${esc(r.resourceKey)}</td>
+    <td class="text-cell">${srcHl}</td>
+    <td class="text-cell">${tgtHl}</td>
+    <td class="error-reason">${esc(r.reason)}</td>
+  </tr>`;
+    }
     const pairs = parseMatchToken(r.matchToken);
     const colorMap = {};
     pairs.forEach(p => { if (!colorMap[p.en]) colorMap[p.en] = HL_COLORS[Object.keys(colorMap).length % HL_COLORS.length]; });
-    const u = "ec_" + uidJs(`${r.hotel_id}_${r.resourceKey}_${idx}`);
+    srcHl = buildHighlightHtml(r.sourceText, pairs, "src", colorMap);
+    tgtHl = buildHighlightHtml(r.targetText, pairs, "tgt", colorMap);
     const srcPlain = esc(r.sourceText);
     const tgtPlain = esc(r.targetText);
-    const srcHl = buildHighlightHtml(r.sourceText, pairs, "src", colorMap);
-    const tgtHl = buildHighlightHtml(r.targetText, pairs, "tgt", colorMap);
-    const roomUidEsc = String(r.uid).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
     return `<tr class="ecode-jump-row" data-uid="${u}" title="点击进入酒店验收" onclick="openHotelRoom('${roomUidEsc}')" onmouseenter="hlRow('${u}',true)" onmouseleave="hlRow('${u}',false)">
     <td class="col-hid">${esc(r.hotel_id)}</td>
     <td class="col-rid">${esc(r.resourceKey)}</td>
@@ -851,8 +1009,11 @@ function renderErrorCodeDetail(){
     <td class="error-reason">${esc(r.reason)}</td>
   </tr>`;
   }).join("");
+  const hint601 = selectedErrorCode === "601"
+    ? "（点击行跳转酒店验收；黄色高亮为 matchToken 中 reason 分词及对应译法）"
+    : "（点击行跳转酒店验收，悬停高亮 token）";
   detailArea.innerHTML = `
-    <h4 class="ecode-detail-head"><span class="ecode-badge" style="background:${bg}">${esc(item.code)}</span> ${esc(item.errorType)} — 共 ${item.rooms.length} 条房型记录 <span style="font-weight:400;font-size:12px;color:var(--muted)">（点击行跳转酒店验收，悬停高亮 token）</span></h4>
+    <h4 class="ecode-detail-head"><span class="ecode-badge" style="background:${bg}">${esc(item.code)}</span> ${esc(item.errorType)} — 共 ${item.rooms.length} 条房型记录 <span style="font-weight:400;font-size:12px;color:var(--muted)">${hint601}</span></h4>
     <div class="table-wrap"><table class="ecode-detail-table"><thead><tr>
       <th>hotel_id</th><th>room_id</th><th>原名</th><th>译名</th><th>reason</th>
     </tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -999,9 +1160,11 @@ function saveTokenFix(hid, token, val){
 
 function buildGlobal601Groups(){
   const tokenMap = {};
+  const allOrphans = [];
   for (const hotel of DATA.hotels) {
-    for (const g of build601Groups(hotel)) {
-      const key = g.token.toLowerCase();
+    const { groups, orphans } = build601Analysis(hotel);
+    for (const g of groups) {
+      const key = g.tokenNorm || normTokenKey(g.token);
       if (!tokenMap[key]) {
         tokenMap[key] = { token: g.token, translations: {}, roomUids: new Set(), hotelIds: new Set() };
       }
@@ -1014,8 +1177,11 @@ function buildGlobal601Groups(){
         agg.hotelIds.add(hotel.hotel_id);
       }
     }
+    for (const o of orphans) {
+      allOrphans.push({ hotel, ...o });
+    }
   }
-  return Object.values(tokenMap).sort((a, b) => b.roomUids.size - a.roomUids.size);
+  return { groups: Object.values(tokenMap).sort((a, b) => b.roomUids.size - a.roomUids.size), orphans: allOrphans };
 }
 
 function formatGlobalTokenFix(token, hs){
@@ -1043,7 +1209,7 @@ function formatGlobalTokenFix(token, hs){
 function renderGlobal601Table(){
   if (!DATA) return;
   const hs = getHotelStore();
-  const groups = buildGlobal601Groups();
+  const { groups, orphans } = buildGlobal601Groups();
   const rows = groups.map(g => {
     const zhHtml = Object.entries(g.translations)
       .sort((a, b) => b[1] - a[1])
@@ -1058,11 +1224,32 @@ function renderGlobal601Table(){
       <td>${g.roomUids.size}</td>
     </tr>`;
   });
-  document.getElementById("global601Table").innerHTML = rows.length
-    ? `<table class="sm-table"><thead><tr>
+  const orphanRows = orphans.map(o => {
+    const token = extract601TokenFromReason(o.reason) || "";
+    const hit = token ? roomHasMatchTokenForReasonToken(o.room, token) : null;
+    return `<tr>
+    <td>${esc(o.hotel.hotel_id)}</td>
+    <td>${esc(o.room.resourceKey)}</td>
+    <td class="token-en">${esc(o.tokenLabel)}</td>
+    <td>${highlight601MatchToken(o.room.sourceText, hit, "src")}</td>
+    <td>${highlight601MatchToken(o.room.targetText, hit, "tgt")}</td>
+    <td class="error-reason">${esc(o.reason)}</td>
+  </tr>`;
+  }).join("");
+  let html = "";
+  if (rows.length) {
+    html += `<table class="sm-table"><thead><tr>
         <th>分词</th><th>出现的翻译和次数</th><th>人工建议固化翻译</th><th>涉及酒店数</th><th>涉及房型数</th>
-      </tr></thead><tbody>${rows.join("")}</tbody></table>`
-    : `<div class="sm-empty">暂无 601 同分词翻译不一致数据</div>`;
+      </tr></thead><tbody>${rows.join("")}</tbody></table>`;
+  }
+  if (orphanRows) {
+    html += `<h3 style="margin:16px 0 8px;font-size:14px">其他 601（未归入分词组，${orphans.length} 条）</h3>
+      <table class="sm-table"><thead><tr>
+        <th>hotel_id</th><th>room_id</th><th>reason 中的 token</th><th>原名</th><th>译名</th><th>reason</th>
+      </tr></thead><tbody>${orphanRows}</tbody></table>`;
+  }
+  document.getElementById("global601Table").innerHTML = html
+    || `<div class="sm-empty">暂无 601 同分词翻译不一致数据</div>`;
 }
 
 function gotoNextIncomplete(){
@@ -1397,80 +1584,166 @@ function hlRow(uid,on){
   tr.querySelectorAll(".hl").forEach(el=>el.classList.toggle("hidden",!on));
 }
 
-function build601Groups(hotel){
-  const eligible = hotel.rooms;
-  const rooms601 = eligible.filter(r => (r.errorList || []).some(e => String(e.errorCode) === "601"));
-  if (!rooms601.length) return [];
-  const agg = {};
-  for (const room of eligible) {
-    for(const p of parseMatchToken(room.matchToken)){
-      if(p.zh.includes(BRACKET_EN_HINT)) continue;
-      if(!agg[p.en]) agg[p.en]={token:p.en, translations:{}};
-      if(!agg[p.en].translations[p.zh]) agg[p.en].translations[p.zh]=[];
-      const exists=agg[p.en].translations[p.zh].some(x=>x.uid===room.uid);
-      if(!exists) agg[p.en].translations[p.zh].push(room);
-    }
-  }
-  const groups=[];
-  for(const g of Object.values(agg)){
-    const zhs=Object.keys(g.translations);
-    if(zhs.length<2) continue;
-    const has601=zhs.some(zh=>g.translations[zh].some(r=>(r.errorList||[]).some(e=>String(e.errorCode)==="601")));
-    if(!has601) continue;
-    const roomSet=new Map();
-    zhs.forEach(zh=>g.translations[zh].forEach(r=>{
-      if(!roomSet.has(r.uid)){
-        const err601=(r.errorList||[]).find(e=>String(e.errorCode)==="601");
-        roomSet.set(r.uid,{room:r,reason:err601?err601.reason:"",zh});
+/**
+ * 601 分析（四步）：
+ * 1. 同酒店所有含 601 的房型
+ * 2. 从 reason「英文 token 为 xxx」提取 xxx 并分组
+ * 3. 从 matchToken 取该分词译法
+ * 4. 补充同酒店 matchToken 含该分词的其他房型
+ */
+function build601Analysis(hotel){
+  // Step 1
+  const rooms601=hotel.rooms.filter(r=>(r.errorList||[]).some(e=>String(e.errorCode)==="601"));
+  if(!rooms601.length) return {groups:[], orphans:[], rooms601Count:0, error601Count:0};
+
+  const tokenMap=new Map();
+  const orphans=[];
+  let error601Count=0;
+
+  // Step 2：按 reason 中的 xxx 分组
+  for(const room of rooms601){
+    (room.errorList||[]).forEach((e,ei)=>{
+      if(String(e.errorCode)!=="601") return;
+      error601Count++;
+      const clauses=extract601TokenClauses(e.reason||"");
+      if(!clauses.length){
+        orphans.push({
+          room, error:e,
+          tokenLabel:"(未识别分词)",
+          reason:e.reason||""
+        });
+        return;
       }
-    }));
+      for(const {tokenValue} of clauses){
+        const token=normalize601ReasonToken(tokenValue);
+        const norm=reasonTokenNorm(tokenValue);
+        if(!tokenMap.has(norm)){
+          tokenMap.set(norm,{token, tokenNorm:norm, triggers:[]});
+        }
+        const g=tokenMap.get(norm);
+        if(!g.triggers.some(t=>t.room.uid===room.uid&&t.reason===e.reason)){
+          g.triggers.push({room, reason:e.reason||"", errorKey:`${room.uid}::${ei}`});
+        }
+      }
+    });
+  }
+
+  const groups=[];
+  for(const [norm,g] of tokenMap){
+    const translations=new Map();
+    const roomEntries=new Map();
+
+    // Step 4：补充 matchToken 含该分词的所有房型
+    for(const room of hotel.rooms){
+      const hit=roomHasMatchTokenForReasonToken(room, g.token);
+      if(!hit) continue;
+      if(!translations.has(hit.zhKey)) translations.set(hit.zhKey,{zh:hit.zh, rooms:[]});
+      const bucket=translations.get(hit.zhKey);
+      if(!bucket.rooms.some(r=>r.uid===room.uid)) bucket.rooms.push(room);
+    }
+
+    // Step 3：601 触发房型必须有译法（matchToken 无则记为未译）
+    for(const tr of g.triggers){
+      const hit=roomHasMatchTokenForReasonToken(tr.room, g.token);
+      const zh=hit?hit.zh:MISSING_ZH;
+      const zhKey=hit?hit.zhKey:MISSING_ZH;
+      if(!translations.has(zhKey)) translations.set(zhKey,{zh, rooms:[]});
+      if(!translations.get(zhKey).rooms.some(r=>r.uid===tr.room.uid))
+        translations.get(zhKey).rooms.push(tr.room);
+      if(!roomEntries.has(tr.room.uid)){
+        roomEntries.set(tr.room.uid,{room:tr.room, reason:tr.reason, zh, is601:true});
+      }
+    }
+
+    // 合并对比房型（非 601 或 601 但未在 triggers 重复处理）
+    for(const t of translations.values()){
+      for(const r of t.rooms){
+        if(roomEntries.has(r.uid)) continue;
+        const tr=g.triggers.find(x=>x.room.uid===r.uid);
+        roomEntries.set(r.uid,{room:r, reason:tr?.reason||"", zh:t.zh, is601:!!tr});
+      }
+    }
+
     groups.push({
       token:g.token,
-      translations:zhs.map(zh=>({zh,count:g.translations[zh].length,rooms:g.translations[zh]})),
-      rooms:[...roomSet.values()]
+      tokenNorm:norm,
+      translations:[...translations.values()].map(t=>({zh:t.zh, count:t.rooms.length, rooms:t.rooms})),
+      rooms:[...roomEntries.values()]
     });
   }
   groups.sort((a,b)=>b.rooms.length-a.rooms.length);
-  return groups;
+
+  return {groups, orphans, rooms601Count:rooms601.length, error601Count};
 }
 
-function highlightTokenInText(text, token, zh, side){
-  if(!text) return esc(text);
-  if(side==="src"&&token){
-    const spans=findSourceTokenSpans(text, token);
+function build601Groups(hotel){
+  return build601Analysis(hotel).groups;
+}
+
+const HL_601 = "#fef08a";
+
+function highlight601MatchToken(text, hit, side){
+  if(!text||!hit) return esc(text);
+  if(side==="src"){
+    const needle=hit.enRaw||"";
+    if(!needle) return esc(text);
+    const spans=findSourceTokenSpans(text, needle);
     if(!spans.length) return esc(text);
     const s=spans[0];
-    return esc(text.slice(0,s.start))+`<mark style="background:#fef08a">${esc(text.slice(s.start,s.end))}</mark>`+esc(text.slice(s.end));
+    return esc(text.slice(0,s.start))+`<mark style="background:${HL_601}">${esc(text.slice(s.start,s.end))}</mark>`+esc(text.slice(s.end));
   }
-  if(side==="tgt"&&zh){
+  if(side==="tgt"){
+    const zh=hit.zh;
+    if(!zh||zh===MISSING_ZH) return esc(text);
     const spans=findTargetZhSpans(text, zh);
     if(!spans.length) return esc(text);
     const s=spans[0];
-    return esc(text.slice(0,s.start))+`<mark style="background:#bfdbfe">${esc(text.slice(s.start,s.end))}</mark>`+esc(text.slice(s.end));
+    return esc(text.slice(0,s.start))+`<mark style="background:${HL_601}">${esc(text.slice(s.start,s.end))}</mark>`+esc(text.slice(s.end));
   }
   return esc(text);
 }
 
+function render601OrphanTable(orphans){
+  if(!orphans.length) return "";
+  const rows=orphans.map(({room, tokenLabel, reason})=>{
+    const token=extract601TokenFromReason(reason)||"";
+    const hit=token?roomHasMatchTokenForReasonToken(room, token):null;
+    return `<tr>
+    <td>${esc(room.resourceKey)}</td>
+    <td class="token-en">${esc(tokenLabel)}</td>
+    <td>${highlight601MatchToken(room.sourceText, hit, "src")}</td>
+    <td>${highlight601MatchToken(room.targetText, hit, "tgt")}</td>
+    <td class="error-reason">${esc(reason)}</td>
+  </tr>`;
+  }).join("");
+  return `<div class="token-panel" style="border-color:#fde68a;background:#fffbeb">
+    <h4 class="token-title">其他 601（未归入分词组，${orphans.length} 条）</h4>
+    <table class="sm-table"><thead><tr><th>母基id</th><th>reason 中的 token</th><th>原名</th><th>译名</th><th>reason</th></tr></thead><tbody>${rows}</tbody></table>
+  </div>`;
+}
+
 function render601Panel(hotel, hid){
-  const groups = build601Groups(hotel);
+  const {groups, orphans, rooms601Count, error601Count}=build601Analysis(hotel);
   const hs=getHotelStore()[hotel.hotel_id]||{token_fixed:{}};
-  if(!groups.length) return `<details class="submodule"><summary class="sm-summary">601 同分词翻译不一致 <span class="sm-count">0</span></summary><div class="sm-body"><div class="sm-empty">无该类错误</div></div></details>`;
+  if(!groups.length&&!orphans.length){
+    return `<details class="submodule"><summary class="sm-summary">601 同分词翻译不一致 <span class="sm-count">0</span></summary><div class="sm-body"><div class="sm-empty">无该类错误</div></div></details>`;
+  }
   const body=groups.map(g=>{
     const tk=tokenKey(g.token);
+    const singleNote=g.translations.length<2?`<span style="font-size:11px;color:var(--muted);margin-left:6px">（本酒店仅一种译法）</span>`:"";
     const zhBadges=g.translations.map(t=>`<span class="zh-badge conflict">${esc(t.zh)} <em>×${t.count}</em></span>`).join(" ");
     const sortedRoomEntries=[...g.rooms].sort((a,b)=>a.room.sourceText.toLowerCase().localeCompare(b.room.sourceText.toLowerCase()));
     const roomRows=sortedRoomEntries.map(({room,reason,zh})=>{
-      const pair=parseMatchToken(room.matchToken).find(p=>p.en===g.token);
-      const zhUse=pair?pair.zh:zh;
+      const hit=roomHasMatchTokenForReasonToken(room, g.token);
       return `<tr>
         <td>${esc(room.resourceKey)}</td>
-        <td>${highlightTokenInText(room.sourceText,g.token,null,"src")}</td>
-        <td>${highlightTokenInText(room.targetText,g.token,zhUse,"tgt")}</td>
+        <td>${highlight601MatchToken(room.sourceText, hit, "src")}</td>
+        <td>${highlight601MatchToken(room.targetText, hit, "tgt")}</td>
         <td class="error-reason">${esc(reason)}</td>
       </tr>`;
     }).join("");
     return `<div class="token-panel">
-      <h4 class="token-title">分词：${esc(g.token)}</h4>
+      <h4 class="token-title">分词：${esc(g.token)}${singleNote}</h4>
       <div class="token-row-grid"><div class="token-en">${esc(g.token)}</div><div>${zhBadges}</div>
         <div><input type="text" class="token-fix-input" placeholder="建议固化翻译…" value="${esc(hs.token_fixed[tk]||"")}" oninput="saveTokenFix('${hotel.hotel_id}','${tk}',this.value)"></div></div>
       <details class="token-rooms-details" open>
@@ -1478,8 +1751,9 @@ function render601Panel(hotel, hid){
         <table class="sm-table" style="margin-top:4px"><thead><tr><th>母基id</th><th>原名</th><th>译名</th><th>reason</th></tr></thead><tbody>${roomRows}</tbody></table>
       </details>
     </div>`;
-  }).join("");
-  return `<details class="submodule" open><summary class="sm-summary">601 同分词翻译不一致 <span class="sm-count">${groups.length}</span></summary><div class="sm-body">${body}</div></details>`;
+  }).join("")+render601OrphanTable(orphans);
+  const summary=`${groups.length} 组 · ${error601Count} 条601${orphans.length?` · ${orphans.length} 条未归组`:""}`;
+  return `<details class="submodule" open><summary class="sm-summary">601 同分词翻译不一致 <span class="sm-count">${rooms601Count}</span> <span style="font-weight:400;font-size:11px;color:var(--muted)">${summary}</span></summary><div class="sm-body">${body}</div></details>`;
 }
 
 function renderErrorCodePanel(hotel, code, title){
@@ -1565,7 +1839,7 @@ function csvEscape(v){
 
 function build601ExportRows(){
   const hs = getHotelStore();
-  const groups = buildGlobal601Groups();
+  const { groups, orphans } = buildGlobal601Groups();
   const header = ["分词", "出现的翻译和次数", "人工建议固化翻译", "涉及酒店数", "涉及房型数"];
   const rows = groups.map(g => {
     const transText = Object.entries(g.translations)
@@ -1575,7 +1849,7 @@ function build601ExportRows(){
     const fixText = formatGlobalTokenFix(g.token, hs);
     return [g.token, transText, fixText === "—" ? "" : fixText, g.hotelIds.size, g.roomUids.size];
   });
-  return [header, ...rows];
+  return { grouped: [header, ...rows], orphans: orphans };
 }
 
 function exportCSV(){
@@ -1600,10 +1874,19 @@ function exportCSV(){
     }
   }
   const ws1=XLSX.utils.aoa_to_sheet(rows);
-  const ws2=XLSX.utils.aoa_to_sheet(build601ExportRows());
+  const export601=build601ExportRows();
+  const ws2=XLSX.utils.aoa_to_sheet(export601.grouped);
+  const ws3=XLSX.utils.aoa_to_sheet([
+    ["hotel_id", "room_id", "reason中的token", "原名", "译名", "reason"],
+    ...export601.orphans.map(o=>[
+      o.hotel.hotel_id, o.room.resourceKey, o.tokenLabel,
+      o.room.sourceText, o.room.targetText, o.reason
+    ])
+  ]);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws1, "房型标注");
   XLSX.utils.book_append_sheet(wb, ws2, "601同分词汇总");
+  XLSX.utils.book_append_sheet(wb, ws3, "601未归组");
   const fname=`房型译名质检_标注_${new Date().toISOString().slice(0,10)}.xlsx`;
   XLSX.writeFile(wb, fname);
 }
