@@ -109,7 +109,12 @@
   /* List view (overview) */
   #listView { display:none; padding:24px 16px 60px; max-width:1100px; margin:0 auto; }
   #listView.active { display:block; }
-  #listView h2 { margin:0 0 16px 0; font-size:18px; font-weight:600; }
+  #listView h2 { margin:0 0 12px 0; font-size:18px; font-weight:600; }
+  #listView .list-toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:14px; }
+  #listView .list-toolbar .count-hint { font-size:12px; color:var(--muted); margin-right:8px; }
+  #listView .filter-pill { padding:5px 12px; font-size:12.5px; border:1px solid var(--border); background:#fff; border-radius:18px; cursor:pointer; color:#374151; }
+  #listView .filter-pill.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+  #listView .filter-pill .small { font-size:11px; opacity:.85; margin-left:4px; }
   #listView .list-grid { display:grid; grid-template-columns:1fr; gap:10px; }
   @media (min-width:900px){ #listView .list-grid { grid-template-columns:1fr 1fr; } }
   .list-item { display:flex; align-items:center; gap:14px; padding:10px 14px; background:#fff; border:1px solid var(--border); border-radius:8px; cursor:pointer; transition:all .15s; }
@@ -294,6 +299,12 @@
 
 <section id="listView">
   <h2>📋 全部房型一览（点击任意条进入详情）</h2>
+  <div class="list-toolbar">
+    <span class="count-hint" id="listCountHint"></span>
+    <button type="button" class="filter-pill active" data-list-filter="all">全部 <span class="small" id="listCntAll">0</span></button>
+    <button type="button" class="filter-pill" data-list-filter="phraseWrong">分词错 <span class="small" id="listCntPhraseWrong">0</span></button>
+    <button type="button" class="filter-pill" data-list-filter="catWrong">分类错 <span class="small" id="listCntCatWrong">0</span></button>
+  </div>
   <div class="list-grid" id="listGrid"></div>
 </section>
 
@@ -1600,16 +1611,53 @@ function initBoard(){
   // ----- List view -----
   let listMode = false;
   let statsMode = false;
+  let listFilter = 'all';
   const listView = document.getElementById('listView');
   const statsView = document.getElementById('statsView');
   const listGrid = document.getElementById('listGrid');
-  const cardsMain = document.getElementById('cards');
+
+  function getRoomListMeta(room){
+    const rs = getRoomState(room.id) || {};
+    let ngN = 0;
+    room.tokens.forEach(t => {
+      const s = state[getKey(room.id, t.i)];
+      if (s && s.mark === 'ng') ngN++;
+    });
+    return { phraseWrong: !!rs.phraseWrong, catWrong: ngN > 0, ngN };
+  }
+
+  function updateListFilterCounts(){
+    const total = DATA.rooms.length;
+    let pw = 0, cw = 0;
+    DATA.rooms.forEach(room => {
+      const m = getRoomListMeta(room);
+      if (m.phraseWrong) pw++;
+      if (m.catWrong) cw++;
+    });
+    const elAll = document.getElementById('listCntAll');
+    const elPw = document.getElementById('listCntPhraseWrong');
+    const elCw = document.getElementById('listCntCatWrong');
+    if (elAll) elAll.textContent = String(total);
+    if (elPw) elPw.textContent = String(pw);
+    if (elCw) elCw.textContent = String(cw);
+  }
+
   function renderListView(){
     listGrid.innerHTML = '';
+    updateListFilterCounts();
     const q = (document.getElementById('search').value || '').trim().toLowerCase();
+    let poolTotal = 0;
+    DATA.rooms.forEach(room => {
+      const m = getRoomListMeta(room);
+      if (listFilter === 'phraseWrong' && !m.phraseWrong) return;
+      if (listFilter === 'catWrong' && !m.catWrong) return;
+      poolTotal++;
+    });
     let shown = 0;
     DATA.rooms.forEach((room, idx) => {
-      // filter when search has a query
+      const m = getRoomListMeta(room);
+      if (listFilter === 'phraseWrong' && !m.phraseWrong) return;
+      if (listFilter === 'catWrong' && !m.catWrong) return;
       if (q) {
         const hit = room.name.toLowerCase().includes(q) || room.tokens.some(t => (t.phrase||'').toLowerCase().includes(q));
         if (!hit) return;
@@ -1617,11 +1665,10 @@ function initBoard(){
       shown++;
       const rs = getRoomState(room.id) || {};
       const totalTok = room.tokens.length;
-      let okN = 0, ngN = 0;
+      let okN = 0, ngN = m.ngN;
       room.tokens.forEach(t => {
         const s = state[getKey(room.id, t.i)];
         if (s && s.mark==='ok') okN++;
-        if (s && s.mark==='ng') ngN++;
       });
       const done = okN + ngN;
       const item = document.createElement('div');
@@ -1651,15 +1698,32 @@ function initBoard(){
       };
       listGrid.appendChild(item);
     });
+    const hint = document.getElementById('listCountHint');
+    const filterLabel = listFilter === 'phraseWrong' ? '分词错' : (listFilter === 'catWrong' ? '分类错' : '');
     if (q && shown === 0) {
-      listGrid.innerHTML = `<div style="padding:24px;text-align:center;color:#9ca3af;">没有房型名包含「${escapeHtml(q)}」</div>`;
+      listGrid.innerHTML = `<div style="padding:24px;text-align:center;color:#9ca3af;">没有匹配的房型${filterLabel ? `（${filterLabel}）` : ''}</div>`;
     }
-    // update header count
     const header = document.querySelector('#listView h2');
-    if (header) header.textContent = q ? `📋 全部房型一览 · 命中 ${shown} / ${DATA.rooms.length}（点击任意条进入详情）` : '📋 全部房型一览（点击任意条进入详情）';
+    if (header) {
+      if (q) {
+        header.textContent = filterLabel
+          ? `📋 房型列表 · ${filterLabel} · 命中 ${shown} / ${poolTotal}（搜索「${q}」）`
+          : `📋 全部房型一览 · 命中 ${shown} / ${DATA.rooms.length}（搜索「${q}」）`;
+      } else if (filterLabel) {
+        header.textContent = `📋 房型列表 · ${filterLabel} · ${shown} / ${DATA.rooms.length}（点击任意条进入详情）`;
+      } else {
+        header.textContent = '📋 全部房型一览（点击任意条进入详情）';
+      }
+    }
+    if (hint) {
+      hint.textContent = filterLabel
+        ? `当前筛选：${filterLabel}，共 ${poolTotal} 个房型`
+        : `共 ${DATA.rooms.length} 个房型`;
+    }
   }
   window.toggleListView = function(force){
     listMode = (typeof force === 'boolean') ? force : !listMode;
+    const cardsMain = document.getElementById('cards');
     if (listMode) {
       if (statsMode) toggleStatsView(false);
       renderListView();
@@ -1794,6 +1858,15 @@ function initBoard(){
     `).join('') || '<tr><td colspan="3" style="text-align:center;color:#9ca3af;padding:24px;">暂无数据</td></tr>';
   }
 
+  document.querySelectorAll('#listView .filter-pill').forEach(btn => {
+    btn.onclick = ()=>{
+      document.querySelectorAll('#listView .filter-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      listFilter = btn.dataset.listFilter || 'all';
+      renderListView();
+    };
+  });
+
   document.querySelectorAll('#statsView .filter-pill').forEach(btn => {
     btn.onclick = ()=>{
       document.querySelectorAll('#statsView .filter-pill').forEach(b => b.classList.remove('active'));
@@ -1805,6 +1878,7 @@ function initBoard(){
 
   window.toggleStatsView = function(force){
     statsMode = (typeof force === 'boolean') ? force : !statsMode;
+    const cardsMain = document.getElementById('cards');
     if (statsMode) {
       if (listMode) toggleListView(false);
       renderStatsView();
