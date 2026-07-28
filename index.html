@@ -46,10 +46,10 @@ body {
 }
 .grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 20px;
 }
-@media (max-width: 720px) {
+@media (max-width: 960px) {
   .grid { grid-template-columns: 1fr; }
 }
 .module-card {
@@ -155,9 +155,21 @@ body {
       <h2>房型分词分类验收</h2>
       <p class="desc">上传分词分类结构与验收 Excel，酒店维度逐房型审核分词与分类；支持汇总多个验收 HTML 快照。</p>
       <div class="tags">
-        <span class="tag">分词分类</span>
+        <span class="tag">房型分词</span>
         <span class="tag">高频分词统计</span>
         <span class="tag">汇总 HTML</span>
+      </div>
+      <span class="enter">进入工具 →</span>
+    </a>
+
+    <a class="module-card token" href="hotelname_token_review.html" style="border-color:#c4b5fd;">
+      <div class="icon" style="background:#ede9fe;">🏨</div>
+      <h2>酒店名称分词分类验收</h2>
+      <p class="desc">上传酒店名称分词/分类 Excel，逐酒店验收模型分词与分类结果；导出填写 G/H/I/K/L/M/N 列。</p>
+      <div class="tags">
+        <span class="tag">酒店分词</span>
+        <span class="tag">单文件导入</span>
+        <span class="tag">导出 Excel</span>
       </div>
       <span class="enter">进入工具 →</span>
     </a>

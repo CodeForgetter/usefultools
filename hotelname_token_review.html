@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>房型分词分类验收</title>
+<title>酒店名称分词分类验收</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   :root { --bg:#f6f7fb; --card:#fff; --muted:#6b7280; --border:#e5e7eb; --primary:#2563eb; --ok:#16a34a; --ng:#dc2626; --warn:#d97706; }
@@ -31,22 +31,38 @@
   main { padding:24px 16px 60px; max-width:920px; margin:0 auto; }
   .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:28px 32px 32px; box-shadow:0 4px 16px rgba(0,0,0,.04); }
   .card.hidden { display:none; }
-  .room-title { position:sticky; top:var(--toolbar-h, 56px); z-index:40; background:#fff; text-align:center; font-size:30px; font-weight:700; line-height:1.4; margin:-28px -32px 20px; padding:16px 32px 14px; letter-spacing:1px; border-bottom:1px solid var(--border); border-radius:14px 14px 0 0; }
-  .room-title .seg { padding:4px 4px; border-radius:6px; }
+  .room-title { position:sticky; top:var(--toolbar-h, 56px); z-index:40; background:#fff; text-align:center; font-size:30px; font-weight:700; line-height:1.45; margin:-28px -32px 20px; padding:16px 32px 14px; letter-spacing:0; border-bottom:1px solid var(--border); border-radius:14px 14px 0 0; }
+  .room-title .title-flow { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px 10px; max-width:100%; }
+  .room-title .seg { margin:0; padding:0; border-radius:0; font-weight:inherit; }
+  .room-title .seg-plain { color:#374151; white-space:pre; }
+  .room-title .seg-tok { display:inline-block; padding:4px 11px; border-radius:8px; font-weight:600; line-height:1.3; border-bottom:3px solid var(--tok-border, #cbd5e1); background:var(--tok-bg, #f3f4f6); color:var(--tok-text, #111827); box-decoration-break:clone; -webkit-box-decoration-break:clone; }
   .room-meta { text-align:center; font-size:12px; color:var(--muted); margin-bottom:20px; }
+  .room-meta a { color:var(--primary); text-decoration:none; font-weight:600; }
+  .room-meta a:hover { text-decoration:underline; }
 
-  .room-flag { background:#fef9c3; border:1px solid #fde68a; border-left:4px solid #d97706; border-radius:8px; padding:10px 14px; margin-bottom:16px; display:flex; flex-direction:column; gap:8px; }
+  .room-flag { background:#fef9c3; border:1px solid #fde68a; border-left:4px solid #d97706; border-radius:8px; padding:10px 14px; margin-bottom:12px; }
   .room-flag label.toggle { display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:600; font-size:14px; color:#92400e; }
   .room-flag label.toggle input { width:18px; height:18px; cursor:pointer; accent-color:#d97706; }
-  .room-flag .remark-wrap { display:none; }
-  .room-flag.on .remark-wrap { display:block; }
-  .room-flag textarea { width:100%; min-height:48px; font-size:13px; padding:6px 10px; border:1px solid #fde68a; border-radius:6px; font-family:inherit; resize:vertical; background:#fffbeb; }
 
-  .new-token-area { display:none; margin-bottom:12px; }
-  .new-token-area .nta-title { font-size:13px; font-weight:600; color:#374151; margin-bottom:8px; }
-  .new-token-area .empty-tip { color:#6b7280; font-size:12px; padding:6px 0 8px; }
-  .new-token-area .add-nt-btn { margin-top:8px; padding:8px 14px; font-size:13px; border:1px dashed #9ca3af; background:#fff; color:#374151; border-radius:6px; cursor:pointer; font-weight:600; }
-  .new-token-area .add-nt-btn:hover { background:#f3f4f6; border-color:#6b7280; }
+  /* 方案A：勾选分词有误后的「修正区」 */
+  .fix-panel { display:none; margin-bottom:18px; padding:14px 16px 16px; background:#fff7ed; border:1px solid #fdba74; border-radius:10px; box-shadow:inset 3px 0 0 #ea580c; }
+  .fix-panel.visible { display:block; }
+  .fix-panel .fix-panel-title { margin:0 0 12px; font-size:13px; font-weight:700; color:#9a3412; letter-spacing:.02em; }
+  .fix-panel .phrase-remark-wrap { display:block; margin-bottom:14px; }
+  .fix-panel .phrase-remark-wrap label { font-size:12px; color:#9a3412; font-weight:600; display:block; }
+  .fix-panel textarea.phrase-remark { width:100%; min-height:48px; font-size:13px; padding:8px 10px; margin-top:6px; border:1px solid #fed7aa; border-radius:6px; font-family:inherit; resize:vertical; background:#fff; color:#111827; }
+  .fix-panel textarea.phrase-remark:focus { outline:none; border-color:#fb923c; box-shadow:0 0 0 3px rgba(251,146,60,.2); }
+  .fix-panel .new-token-area { display:block; margin-bottom:0; padding-top:12px; border-top:1px dashed #fdba74; }
+  .fix-panel .new-token-area .nta-title { font-size:13px; font-weight:700; color:#9a3412; margin-bottom:8px; }
+  .fix-panel .new-token-area .empty-tip { color:#c2410c; font-size:12px; padding:6px 0 8px; }
+  .fix-panel .new-token-area .add-nt-btn { margin-top:8px; padding:8px 14px; font-size:13px; border:1px dashed #ea580c; background:#fff; color:#c2410c; border-radius:6px; cursor:pointer; font-weight:600; }
+  .fix-panel .new-token-area .add-nt-btn:hover { background:#ffedd5; border-color:#c2410c; }
+  .fix-panel .token-row.new { background:#fff; border-color:#fdba74; }
+
+  .orig-token-section { margin-top:4px; }
+  .orig-token-section .orig-title { display:none; margin:0 0 10px; font-size:13px; font-weight:700; color:#374151; }
+  .card.phrase-wrong .orig-token-section .orig-title { display:block; }
+  .card.phrase-wrong .orig-token-section .token-list > .token-row:not(.deleted) { background:#fff; }
   .token-row.new input.new-phrase { font-size:18px; font-weight:600; padding:5px 8px; border:1px solid #d1d5db; border-radius:5px; min-width:90px; max-width:160px; background:#fff; }
   .token-row.new select.new-cat { font-size:13px; padding:5px 8px; border:1px solid #d1d5db; border-radius:5px; min-width:140px; background:#fff; }
   .token-row.new .badge-color { display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:middle; }
@@ -58,14 +74,14 @@
 
   .token-row .del-btn { width:30px; height:30px; border:1px solid var(--border); background:#fff; border-radius:5px; cursor:pointer; font-size:14px; padding:0; }
   .token-row .del-btn:hover { background:#fee2e2; border-color:#fca5a5; }
-  .token-row.deleted { opacity:.5; }
+  .token-row.deleted { opacity:.42; background:#f3f4f6 !important; border-style:dashed; border-color:#d1d5db; }
   .token-row.deleted .phrase, .token-row.deleted .badge { text-decoration:line-through; }
   .token-row.deleted .mark button { pointer-events:none; opacity:.4; }
   .token-row.deleted .del-btn { background:#fef3c7; border-color:#fcd34d; color:#92400e; }
   .token-row .deleted-tag { display:none; padding:2px 6px; font-size:11px; border-radius:3px; background:#9ca3af; color:#fff; }
   .token-row.deleted .deleted-tag { display:inline-block; }
-  .card.phrase-wrong { box-shadow:0 0 0 2px #fcd34d, 0 4px 16px rgba(0,0,0,.04); }
-  .card .pw-corner { display:none; position:absolute; top:14px; right:18px; padding:3px 9px; font-size:11px; font-weight:700; border-radius:4px; background:#d97706; color:#fff; letter-spacing:.5px; }
+  .card.phrase-wrong { box-shadow:0 0 0 2px #fb923c, 0 4px 16px rgba(0,0,0,.04); }
+  .card .pw-corner { display:none; position:absolute; top:14px; right:18px; padding:3px 9px; font-size:11px; font-weight:700; border-radius:4px; background:#ea580c; color:#fff; letter-spacing:.5px; }
   .card.phrase-wrong .pw-corner { display:inline-block; }
   .card { position:relative; }
 
@@ -75,7 +91,7 @@
   .token-row.ok { border-color:#86efac; background:#f0fdf4; }
   .token-row.ng { border-color:#fca5a5; background:#fef2f2; }
   .token-row .phrase { font-size:18px; font-weight:600; min-width:80px; }
-  .token-row .badge { font-size:13px; padding:4px 10px; border-radius:6px; color:#fff; display:inline-flex; align-items:center; gap:8px; }
+  .token-row .badge { font-size:13px; padding:4px 10px; border-radius:6px; color:#fff; display:inline-flex; align-items:center; gap:8px; font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,.12); border:1px solid rgba(255,255,255,.25); }
   .token-row .badge .info { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(255,255,255,.3); font-style:italic; font-size:12px; font-weight:700; cursor:pointer; transition:all .15s; }
   .token-row .badge .info:hover { background:rgba(255,255,255,.65); box-shadow:0 0 0 2px rgba(255,255,255,.4); }
   .token-row .grow { flex:1; }
@@ -120,8 +136,10 @@
   .list-item { display:flex; align-items:center; gap:14px; padding:10px 14px; background:#fff; border:1px solid var(--border); border-radius:8px; cursor:pointer; transition:all .15s; }
   .list-item:hover { background:#eff6ff; border-color:#93c5fd; transform:translateX(2px); }
   .list-item .idx { width:32px; flex:none; font-size:12px; color:var(--muted); font-weight:600; text-align:right; }
-  .list-item .name { flex:1; font-size:15px; font-weight:500; line-height:1.4; }
-  .list-item .name .seg { padding:2px 3px; border-radius:4px; }
+  .list-item .name { flex:1; font-size:15px; font-weight:500; line-height:1.45; min-width:0; }
+  .list-item .name .title-flow { display:flex; flex-wrap:wrap; align-items:center; gap:4px 6px; }
+  .list-item .name .seg-plain { color:#374151; white-space:pre; }
+  .list-item .name .seg-tok { display:inline-block; padding:2px 7px; border-radius:6px; font-weight:600; font-size:14px; line-height:1.25; border-bottom:2px solid var(--tok-border, #cbd5e1); background:var(--tok-bg, #f3f4f6); color:var(--tok-text, #111827); }
   .list-item .badges { flex:none; display:flex; gap:4px; align-items:center; }
   .list-item .pill { font-size:11px; padding:2px 7px; border-radius:10px; font-weight:600; }
   .list-item .pill.todo { background:#f3f4f6; color:#6b7280; }
@@ -228,7 +246,7 @@
 </head>
 <body>
 <header class="toolbar" id="toolbar" style="display:none;">
-  <h1>🏨 房型分词分类验收</h1>
+  <h1>🏨 酒店名称分词分类验收</h1>
   <div class="toolbar-left">
     <a class="btn" href="index.html">← 回到首页</a>
     <button onclick="resetAndReimport()" id="reimportBtn" title="重新导入会丢失所有本地进度">🔄 导入新文件</button>
@@ -237,13 +255,13 @@
       <span class="progress">第 <b id="curIdx">1</b> / <b id="totalIdx">1</b> 条</span>
       <button id="nextBtn" title="下一条 (→)">▶</button>
     </div>
-    <input id="search" type="text" placeholder="搜索房型名跳转…">
-    <button onclick="toggleListView()" id="listViewBtn">📋 房型列表</button>
+    <input id="search" type="text" placeholder="搜索酒店英文名跳转…">
+    <button onclick="toggleListView()" id="listViewBtn">📋 酒店列表</button>
     <button onclick="toggleStatsView()" id="statsViewBtn">📊 数据统计</button>
   </div>
   <div class="toolbar-right">
-    <span class="stat">房型审核 <b id="stRoomDone">0</b> / <b id="stRoomTotal">0</b></span>
-    <button onclick="markCurrentAllOk()">本条全部标对</button>
+    <span class="stat">酒店审核 <b id="stRoomDone">0</b> / <b id="stRoomTotal">0</b></span>
+    <button onclick="markCurrentAllOk()">本酒店全部标对</button>
     <button onclick="gotoUndone()">⏭ 跳转至未完成</button>
     <button class="primary" onclick="exportXlsx()">📥 导出 xlsx</button>
     <button class="primary" onclick="exportHtml()">📄 导出 HTML</button>
@@ -252,53 +270,26 @@
 
 <section id="importWizard">
   <div class="page-home-bar"><a class="btn" href="index.html">← 回到首页</a></div>
-  <h1 class="landing-title">✂️ 房型分词分类</h1>
-  <div class="landing-grid">
-    <div class="wizard-col wizard-col-left">
-      <div class="col-heading">新建验收</div>
-      <div class="subtitle">浏览器端验收平台 · 上传两份 xlsx 即可开始</div>
-      <div class="step current" id="step1">
-        <h3><span class="num"><span>1</span></span> 导入分词分类结构 Excel <span id="step1Reupload"></span></h3>
-        <div class="req">表头列必须包含：<code>大类</code>、<code>一级子类</code>、<code>二级子类</code>、<code>定义</code>、<code>举例</code>、<code>中文房型名称是否允许填写</code>、<code>对应运营审核大类</code>、<code>对应模型的category</code></div>
-        <label class="upload-btn" for="step1File" id="step1Btn">📂 选择文件…</label>
-        <input type="file" id="step1File" accept=".xlsx,.xls" style="display:none;">
-        <div id="step1Info"></div>
-        <div id="step1Err"></div>
-      </div>
-      <div class="step locked" id="step2">
-        <h3><span class="num"><span>2</span></span> 导入本次验收 Excel <span id="step2Reupload"></span></h3>
-        <div class="req">表头列必须包含：<code>roomName</code>、<code>phrase</code>、<code>category</code>、<code>defect</code>、<code>defectType</code></div>
-        <label class="upload-btn disabled" for="step2File" id="step2Btn">📂 选择文件…</label>
-        <input type="file" id="step2File" accept=".xlsx,.xls" style="display:none;" disabled>
-        <div id="step2Info"></div>
-        <div id="step2Err"></div>
-      </div>
-      <button class="continue-btn" id="continueBtn" disabled>继续 ▶</button>
+  <h1 class="landing-title">🏨 酒店名称分词分类</h1>
+  <div style="max-width:640px;margin:0 auto;">
+    <div class="col-heading">导入验收 Excel</div>
+    <p class="subtitle" style="color:var(--muted);font-size:13px;line-height:1.6;margin:0 0 16px;">上传含模型分词/分类结果的 Excel（A–F 列），验收后导出填写 G–L 列。</p>
+    <div class="step current" id="stepImport">
+      <h3>选择文件</h3>
+      <div class="req">必需列 A–F：<code>masterhotelid</code>、<code>hotelenname</code>、<code>hotelcnname</code>、<code>hotel_info</code>、<code>segmentation_result</code>、<code>ext</code>。输出列 G–L 由工具填写（分词/分类是否准确、正确结果、备注）。</div>
+      <label class="upload-btn" for="importFile" id="importBtn">📂 选择 Excel…</label>
+      <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none;">
+      <div id="importInfo"></div>
+      <div id="importErr"></div>
     </div>
-    <div class="wizard-col wizard-col-right">
-      <div class="col-heading">汇总验收 HTML</div>
-      <div class="subtitle">选择多个「📄 导出 HTML」验收快照，合并为一份（可处理重复房型）</div>
-      <div class="step current" id="mergeStep">
-        <h3><span class="num"><span>1</span></span> 选择快照文件</h3>
-        <div class="req">仅支持本工具导出的 HTML 快照（内含 <code>__DATA__</code> 与验收进度）。</div>
-        <label class="upload-btn" for="mergeFilesInput" id="mergeFilesBtn">📂 选择 HTML 文件（可多选）…</label>
-        <input type="file" id="mergeFilesInput" accept=".html,.htm" multiple style="display:none;">
-      </div>
-      <div id="mergeFileList" class="merge-file-list"></div>
-      <div id="mergeDupPanel" class="merge-dup-panel">
-        <h4>⚠ 重复房型名称 — 请勾选要保留的条目</h4>
-        <div id="mergeDupTable"></div>
-      </div>
-      <div id="mergeErr"></div>
-      <button class="continue-btn" id="mergeBtn" disabled>开始合并并打开 ▶</button>
-    </div>
+    <button class="continue-btn" id="continueBtn" disabled>开始验收 ▶</button>
   </div>
 </section>
 
 <main id="cards" style="display:none;"></main>
 
 <section id="listView">
-  <h2>📋 全部房型一览（点击任意条进入详情）</h2>
+  <h2>📋 全部酒店一览（点击任意条进入详情）</h2>
   <div class="list-toolbar">
     <span class="count-hint" id="listCountHint"></span>
     <button type="button" class="filter-pill active" data-list-filter="all">全部 <span class="small" id="listCntAll">0</span></button>
@@ -336,34 +327,66 @@
 <script>
 // ====== Module-level state ======
 let DATA = null;
-let TAXO_ENTRIES = []; // raw taxonomy entries from uploaded structure xlsx
-let TAXO_BY_CAT = {};  // {category → taxonomy entry}
-let DEFECT_BY_CAT = {};// {category → entry whose 大类 matches DEFECT_GROUP_REGEX}
-let DEFECT_FALLBACK = null; // first 大类=缺陷信息 entry (used when no specific match)
-let RAW_DATA_ROWS = []; // parsed verification rows {roomName, phrase, category, defect, defectType}
 let state = {};
-
-// ====== Constants ======
-const STATE_KEY = 'roomTokenReview.v1';
-const HASH_KEY = 'roomTokenReview.payloadHash';
-const IDX_KEY = 'roomTokenReview.curIdx';
-const PAYLOAD_KEY = 'roomTokenReview.payload';
-const TAXO_KEY = 'roomTokenReview.taxoIndex';
-const ROOM_KEY_PREFIX = 'room__';            // state[ROOM_KEY_PREFIX + roomId] = room-level state
-const SAVE_DEBOUNCE_MS = 200;                // localStorage write debounce
-const SOFT_DELETED_LABEL = '软删除';          // shown in stats / export for soft-deleted tokens
-const ADDED_TOKEN_LABEL = '新增';             // shown in export for user-added tokens
-const DEFECT_DISPLAY_NAME = '房型缺陷';       // user-facing label for the defect category
-const DEFECT_RAW_KEY = 'defect';             // literal placeholder used in taxonomy xlsx category column
-const DEFECT_GROUP_REGEX = /缺陷/;           // matches entries belonging to the 缺陷信息 大类
+let CATEGORY_OPTS = [];
+let SOURCE_HEADERS = [];
+let SOURCE_ROWS = [];
+const STATE_KEY = 'hotelTokenReview.v1';
+const HASH_KEY = 'hotelTokenReview.payloadHash';
+const IDX_KEY = 'hotelTokenReview.curIdx';
+const PAYLOAD_KEY = 'hotelTokenReview.payload';
+const TAXO_KEY = 'hotelTokenReview.sourceBlob';
+const HOTEL_KEY_PREFIX = 'hotel__';
+const SAVE_DEBOUNCE_MS = 200;
+const SOFT_DELETED_LABEL = '软删除';
+const ADDED_TOKEN_LABEL = '新增';
 const UNCATEGORIZED = '未分类';
+// G=分词是否准确 H=正确分词 I=分词备注 J=分类是否准确 K=正确分类 L=分类备注
+const OUT_COL = { phraseAcc:6, correctPhrases:7, phraseRemark:8, classAcc:9, correctClass:10, classRemark:11 };
+
+/** 酒店分类固定色板（高对比、易区分） */
+const CATEGORY_PALETTE = {
+  'coreWords / brand':      { bg:'#6d28d9', soft:'#ede9fe', text:'#4c1d95', border:'#7c3aed' },
+  'coreWords / mgrGroup':   { bg:'#7e22ce', soft:'#f3e8ff', text:'#581c87', border:'#9333ea' },
+  'coreWords / other':      { bg:'#a21caf', soft:'#fae8ff', text:'#701a75', border:'#c026d3' },
+  'coreWords':              { bg:'#9333ea', soft:'#f3e8ff', text:'#6b21a8', border:'#a855f7' },
+  'accommodationType':      { bg:'#1d4ed8', soft:'#dbeafe', text:'#1e3a8a', border:'#2563eb' },
+  'adminLevel':             { bg:'#0e7490', soft:'#cffafe', text:'#155e75', border:'#0891b2' },
+  'attribute / policy':     { bg:'#c2410c', soft:'#ffedd5', text:'#9a3412', border:'#ea580c' },
+  'attribute / facility':   { bg:'#15803d', soft:'#dcfce7', text:'#166534', border:'#16a34a' },
+  'attribute / features':   { bg:'#4d7c0f', soft:'#ecfccb', text:'#365314', border:'#65a30d' },
+  'attribute':              { bg:'#b45309', soft:'#fef3c7', text:'#92400e', border:'#d97706' },
+  'positionDesc':           { bg:'#be185d', soft:'#fce7f3', text:'#9d174d', border:'#db2777' },
+  'functionWords':          { bg:'#475569', soft:'#e2e8f0', text:'#334155', border:'#64748b' },
+  'symbol':                 { bg:'#57534e', soft:'#f5f5f4', text:'#44403c', border:'#78716c' },
+  'other':                  { bg:'#b91c1c', soft:'#fee2e2', text:'#991b1b', border:'#dc2626' },
+  [SOFT_DELETED_LABEL]:     { bg:'#6b7280', soft:'#f3f4f6', text:'#374151', border:'#9ca3af' },
+  [ADDED_TOKEN_LABEL]:      { bg:'#047857', soft:'#d1fae5', text:'#065f46', border:'#059669' },
+  [UNCATEGORIZED]:          { bg:'#9ca3af', soft:'#f9fafb', text:'#6b7280', border:'#d1d5db' },
+};
+
+function hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return Math.abs(h); }
+
+function paletteForCat(cat){
+  const key = String(cat||'').trim();
+  if (CATEGORY_PALETTE[key]) return CATEGORY_PALETTE[key];
+  const root = key.split(' / ')[0];
+  if (CATEGORY_PALETTE[root]) return CATEGORY_PALETTE[root];
+  const h = (hashStr(key) * 137.508) % 360;
+  return { bg:`hsl(${h} 58% 38%)`, soft:`hsl(${h} 68% 93%)`, text:`hsl(${h} 52% 26%)`, border:`hsl(${h} 58% 42%)` };
+}
+
+function catColor(cat){ return paletteForCat(cat).bg; }
+function catBgSoft(cat){ return paletteForCat(cat).soft; }
+function catTextColor(cat){ return paletteForCat(cat).text; }
+function catBorderColor(cat){ return paletteForCat(cat).border; }
 
 try { state = JSON.parse(localStorage.getItem(STATE_KEY) || '{}'); } catch(e){ state = {}; }
 
 // ====== Helpers: room-level state ======
-function getRoomState(roomId){ return state[ROOM_KEY_PREFIX + roomId] || null; }
-function ensureRoomState(roomId){
-  const k = ROOM_KEY_PREFIX + roomId;
+function getHotelState(roomId){ return state[HOTEL_KEY_PREFIX + roomId] || null; }
+function ensureHotelState(roomId){
+  const k = HOTEL_KEY_PREFIX + roomId;
   if (!state[k]) state[k] = {};
   return state[k];
 }
@@ -407,10 +430,11 @@ function restoreSession(){
   if (inlineRaw && inlineRaw !== '') {
     try {
       const parsed = JSON.parse(inlineRaw);
-      if (parsed && parsed.rooms && parsed.rooms.length) {
+      if (parsed && parsed.hotels && parsed.hotels.length) {
         DATA = parsed;
-        if (DATA.taxonomy) TAXO_BY_CAT = DATA.taxonomy;
-        if (DATA.defectByCat) DEFECT_BY_CAT = DATA.defectByCat;
+        if (DATA.categoryOpts) CATEGORY_OPTS = DATA.categoryOpts;
+        if (DATA.sourceHeaders) SOURCE_HEADERS = DATA.sourceHeaders;
+        if (DATA.sourceRows) SOURCE_ROWS = DATA.sourceRows;
         enterBoard();
         return true;
       }
@@ -424,11 +448,13 @@ function restoreSession(){
     if (persistedPayload && persistedTaxo) {
       const payload = JSON.parse(persistedPayload);
       const taxoBlob = JSON.parse(persistedTaxo);
-      if (payload && payload.rooms && payload.rooms.length) {
+      if (payload && payload.hotels && payload.hotels.length) {
         DATA = payload;
-        TAXO_BY_CAT = taxoBlob.taxoByCat || {};
-        DEFECT_BY_CAT = taxoBlob.defectByCat || {};
-        DEFECT_FALLBACK = taxoBlob.defectFallback || null;
+        CATEGORY_OPTS = taxoBlob.categoryOpts || [];
+        SOURCE_HEADERS = taxoBlob.sourceHeaders || [];
+        SOURCE_ROWS = taxoBlob.sourceRows || [];
+        
+        
         enterBoard();
         return true;
       }
@@ -449,351 +475,78 @@ function showLandingPage(){
   document.getElementById('listView').classList.remove('active');
   document.getElementById('statsView').classList.remove('active');
   initImportWizard();
-  initMergeWizard();
+  // merge disabled
 }
 
 let _importWizardHandlersBound = false;
 let _mergeWizardHandlersBound = false;
 
 function initImportWizard(){
-  const step1 = document.getElementById('step1');
-  const step2 = document.getElementById('step2');
-  const step1Btn = document.getElementById('step1Btn');
-  const step2Btn = document.getElementById('step2Btn');
-  const step1File = document.getElementById('step1File');
-  const step2File = document.getElementById('step2File');
-  const step1Info = document.getElementById('step1Info');
-  const step2Info = document.getElementById('step2Info');
-  const step1Err = document.getElementById('step1Err');
-  const step2Err = document.getElementById('step2Err');
+  const importFile = document.getElementById('importFile');
+  const importInfo = document.getElementById('importInfo');
+  const importErr = document.getElementById('importErr');
   const continueBtn = document.getElementById('continueBtn');
-  let taxoFileName = '';
-  let dataFileName = '';
-
-  // Reset visual state (in case wizard is being re-entered after a previous import)
-  step1.classList.remove('done'); step1.classList.add('current');
-  step2.classList.remove('done', 'current'); step2.classList.add('locked');
-  step1Info.innerHTML = ''; step2Info.innerHTML = '';
-  step1Err.innerHTML = ''; step2Err.innerHTML = '';
-  document.getElementById('step1Reupload').innerHTML = '';
-  document.getElementById('step2Reupload').innerHTML = '';
-  step2Btn.classList.add('disabled');
-  step2File.disabled = true;
-  continueBtn.disabled = true;
-  step1File.value = '';
-  step2File.value = '';
-
+  let fileName = '';
+  let parsedCache = null;
   if (_importWizardHandlersBound) return;
   _importWizardHandlersBound = true;
-
-  step1File.onchange = async (e) => {
-    step1Err.innerHTML = ''; step1Info.innerHTML = '';
+  importFile.onchange = async (e) => {
+    importErr.innerHTML = ''; importInfo.innerHTML = '';
     const file = e.target.files[0]; if (!file) return;
     try {
       const buf = await file.arrayBuffer();
-      const result = parseTaxonomyXlsx(buf);
-      TAXO_ENTRIES = result.entries;
-      buildTaxoIndices();
-      taxoFileName = file.name;
-      step1.classList.remove('current'); step1.classList.add('done');
-      step1Info.innerHTML = `<div class="file-info">✅ <b>${escapeHtml(file.name)}</b><br>解析到 <b>${result.entries.length}</b> 条分类条目，含 <b>${Object.keys(TAXO_BY_CAT).length}</b> 个 category 映射，<b>${Object.keys(DEFECT_BY_CAT).length}</b> 个缺陷信息条目。</div>`;
-      document.getElementById('step1Reupload').innerHTML = '<button class="reupload" onclick="document.getElementById(\'step1File\').click()">重新上传</button>';
-      // unlock step 2
-      step2.classList.remove('locked'); step2.classList.add('current');
-      step2Btn.classList.remove('disabled');
-      step2File.disabled = false;
-    } catch(err) {
-      step1Err.innerHTML = `<div class="err">❌ ${escapeHtml(err.message)}</div>`;
-    }
-    step1File.value = ''; // allow re-pick of same file
-  };
-
-  step2File.onchange = async (e) => {
-    step2Err.innerHTML = ''; step2Info.innerHTML = '';
-    const file = e.target.files[0]; if (!file) return;
-    try {
-      const buf = await file.arrayBuffer();
-      const result = parseDataXlsx(buf);
-      RAW_DATA_ROWS = result.rows;
-      dataFileName = file.name;
-      step2.classList.remove('current'); step2.classList.add('done');
-      step2Info.innerHTML = `<div class="file-info">✅ <b>${escapeHtml(file.name)}</b><br>解析到 <b>${result.rooms}</b> 个房型，<b>${result.rows.length}</b> 个分词，涉及 <b>${result.categories}</b> 个 category。</div>`;
-      document.getElementById('step2Reupload').innerHTML = '<button class="reupload" onclick="document.getElementById(\'step2File\').click()">重新上传</button>';
+      parsedCache = parseHotelXlsx(buf);
+      fileName = file.name;
+      importInfo.innerHTML = `<div class="file-info">✅ <b>${escapeHtml(file.name)}</b><br>解析到 <b>${parsedCache.hotels.length}</b> 家酒店，<b>${parsedCache.hotels.reduce((n,h)=>n+h.tokens.length,0)}</b> 个分词，<b>${parsedCache.categories}</b> 种分类。</div>`;
       continueBtn.disabled = false;
     } catch(err) {
-      step2Err.innerHTML = `<div class="err">❌ ${escapeHtml(err.message)}</div>`;
+      importErr.innerHTML = `<div class="err">❌ ${escapeHtml(err.message)}</div>`;
       continueBtn.disabled = true;
+      parsedCache = null;
     }
-    step2File.value = '';
+    importFile.value = '';
   };
-
   continueBtn.onclick = async () => {
-    // Match check: every category in data must appear in TAXO_BY_CAT
-    const missing = [];
-    const seenCats = new Set();
-    for (const r of RAW_DATA_ROWS) {
-      if (r.category && !seenCats.has(r.category)) {
-        seenCats.add(r.category);
-        if (!TAXO_BY_CAT[r.category]) missing.push(r.category);
-      }
-    }
-    if (missing.length) {
-      alert(`category ${missing.join('、')} 缺少匹配，请联系产品`);
-      return;
-    }
-    // Build DATA payload
-    DATA = await buildPayloadFromRaw(RAW_DATA_ROWS, taxoFileName + '|' + dataFileName);
-    // hash compare
+    if (!parsedCache) return;
+    DATA = await buildPayloadFromHotels(parsedCache, fileName);
+    CATEGORY_OPTS = DATA.categoryOpts || [];
+    SOURCE_HEADERS = DATA.sourceHeaders || [];
+    SOURCE_ROWS = DATA.sourceRows || [];
     const prevHash = localStorage.getItem(HASH_KEY);
     if (prevHash && prevHash !== DATA.payloadHash) {
-      if (confirm('数据已更新（与上次审核的房型集合不同），是否清空旧记录？')) {
+      if (confirm('数据与上次不同，是否清空旧验收记录？')) {
         state = {}; localStorage.setItem(STATE_KEY, '{}');
       }
-      // Always reset cursor when payload changes — otherwise we'd land on a stale index
-      localStorage.removeItem(IDX_KEY);
-    } else if (!prevHash) {
-      // First-ever import on this browser: also clear any stale IDX_KEY from prior tools
-      localStorage.removeItem(IDX_KEY);
     }
+    localStorage.setItem(PAYLOAD_KEY, JSON.stringify({ hotels: DATA.hotels, generatedAt: DATA.generatedAt, payloadHash: DATA.payloadHash, sheetName: DATA.sheetName, categoryOpts: DATA.categoryOpts, sourceHeaders: DATA.sourceHeaders }));
+    localStorage.setItem(TAXO_KEY, JSON.stringify({ categoryOpts: CATEGORY_OPTS, sourceHeaders: SOURCE_HEADERS, sourceRows: SOURCE_ROWS }));
     localStorage.setItem(HASH_KEY, DATA.payloadHash);
-    persistImportedDataset();
     enterBoard();
   };
 }
 
-function persistImportedDataset(){
-  try {
-    localStorage.setItem(PAYLOAD_KEY, JSON.stringify(DATA));
-    localStorage.setItem(TAXO_KEY, JSON.stringify({
-      taxoByCat: TAXO_BY_CAT,
-      defectByCat: DEFECT_BY_CAT,
-      defectFallback: DEFECT_FALLBACK,
-    }));
-  } catch(e) {
-    console.warn('persist import failed', e);
-    alert('保存到本地失败（数据可能过大）：' + e.message);
-  }
-}
-
 window.resetAndReimport = function(){
   if (!confirm('重新导入会丢失所有本地进度，建议先导出当前文件。\n\n确认要继续重新导入吗？')) return;
-  // Clear all import + state keys
   localStorage.removeItem(PAYLOAD_KEY);
   localStorage.removeItem(TAXO_KEY);
   localStorage.removeItem(STATE_KEY);
   localStorage.removeItem(HASH_KEY);
   localStorage.removeItem(IDX_KEY);
-  // Reset module-level globals
   DATA = null;
-  TAXO_ENTRIES = [];
-  TAXO_BY_CAT = {};
-  DEFECT_BY_CAT = {};
-  DEFECT_FALLBACK = null;
-  RAW_DATA_ROWS = [];
+  CATEGORY_OPTS = [];
+  SOURCE_HEADERS = [];
+  SOURCE_ROWS = [];
   state = {};
+  const info = document.getElementById('importInfo');
+  const err = document.getElementById('importErr');
+  const cont = document.getElementById('continueBtn');
+  if (info) info.innerHTML = '';
+  if (err) err.innerHTML = '';
+  if (cont) cont.disabled = true;
+  const cards = document.getElementById('cards');
+  if (cards) cards.innerHTML = '';
   showLandingPage();
 };
-
-// ====== HTML snapshot merge ======
-let mergeParsedList = [];
-
-function isRoomDoneWithState(room, st){
-  const rs = st[ROOM_KEY_PREFIX + room.id] || {};
-  if (rs.phraseWrong) {
-    const hasEdit = (rs.newTokens && rs.newTokens.length > 0) || (rs.deletedTokenIdx && rs.deletedTokenIdx.length > 0);
-    if (hasEdit) return true;
-  }
-  return room.tokens.every(t => {
-    const s = st[room.id + '__' + t.i];
-    return s && (s.mark === 'ok' || s.mark === 'ng');
-  });
-}
-
-async function parseSnapshotHtmlFile(file){
-  const text = await file.text();
-  const doc = new DOMParser().parseFromString(text, 'text/html');
-  const dataRaw = doc.getElementById('__DATA__')?.textContent?.trim();
-  const stateRaw = doc.getElementById('__STATE_SNAPSHOT__')?.textContent?.trim();
-  if (!dataRaw) throw new Error('不是有效的验收快照（缺少 __DATA__）');
-  const data = JSON.parse(dataRaw);
-  let snap = {};
-  if (stateRaw) {
-    try { snap = JSON.parse(stateRaw); } catch(e) { throw new Error('验收进度解析失败'); }
-  }
-  if (!data.rooms?.length) throw new Error('快照中无房型数据');
-  return { fileName: file.name, data, state: snap };
-}
-
-function remapRoomState(oldId, newId, srcState, dstState){
-  const rk = ROOM_KEY_PREFIX + oldId;
-  if (srcState[rk]) dstState[ROOM_KEY_PREFIX + newId] = JSON.parse(JSON.stringify(srcState[rk]));
-  const prefix = oldId + '__';
-  for (const k of Object.keys(srcState)) {
-    if (k.startsWith(prefix)) {
-      dstState[newId + '__' + k.slice(prefix.length)] = JSON.parse(JSON.stringify(srcState[k]));
-    }
-  }
-}
-
-function collectMergeCandidates(okSnaps){
-  const out = [];
-  okSnaps.forEach((snap, fileIndex) => {
-    snap.data.rooms.forEach((room, roomIndex) => {
-      out.push({
-        key: fileIndex + ':' + room.id,
-        fileIndex,
-        roomIndex,
-        fileName: snap.fileName,
-        room,
-        state: snap.state,
-      });
-    });
-  });
-  return out;
-}
-
-function buildDuplicateGroups(candidates){
-  const byName = new Map();
-  for (const c of candidates) {
-    if (!byName.has(c.room.name)) byName.set(c.room.name, []);
-    byName.get(c.room.name).push(c);
-  }
-  const groups = [];
-  for (const [name, items] of byName) {
-    if (items.length > 1) groups.push({ name, items });
-  }
-  return groups;
-}
-
-function validateDupSelections(dupGroups){
-  for (const g of dupGroups) {
-    const anyChecked = g.items.some(it => {
-      const cb = document.getElementById('dup_' + it.key);
-      return cb && cb.checked;
-    });
-    if (!anyChecked) return g.name;
-  }
-  return null;
-}
-
-function getSelectedMergeKeys(dupGroups, candidates){
-  const dupKeys = new Set();
-  for (const g of dupGroups) {
-    for (const it of g.items) {
-      const cb = document.getElementById('dup_' + it.key);
-      if (cb && cb.checked) dupKeys.add(it.key);
-    }
-  }
-  const dupKeySet = new Set();
-  for (const g of dupGroups) g.items.forEach(it => dupKeySet.add(it.key));
-  return candidates.filter(c => {
-    if (!dupKeySet.has(c.key)) return true;
-    return dupKeys.has(c.key);
-  });
-}
-
-function checkTaxonomyDiffAcrossSnapshots(okSnaps){
-  if (okSnaps.length < 2) return;
-  const baseKeys = new Set(Object.keys(okSnaps[0].data.taxonomy || {}));
-  const diffs = [];
-  for (let i = 1; i < okSnaps.length; i++) {
-    const keys = new Set(Object.keys(okSnaps[i].data.taxonomy || {}));
-    const onlyInBase = [...baseKeys].filter(k => !keys.has(k));
-    const onlyInOther = [...keys].filter(k => !baseKeys.has(k));
-    if (onlyInBase.length || onlyInOther.length) {
-      diffs.push(`「${okSnaps[i].fileName}」与首份快照分类结构不一致`);
-    }
-  }
-  if (diffs.length) alert('分类结构差异提示（不阻断合并）：\n' + diffs.join('\n'));
-}
-
-async function mergeSnapshots(selectedCandidates, baseTaxonomy, baseDefectByCat){
-  const roomsOut = [];
-  const mergedState = {};
-  const roomNames = [];
-  let nextIdx = 0;
-  for (const c of selectedCandidates) {
-    const newId = 'r' + String(nextIdx).padStart(4, '0');
-    nextIdx++;
-    const roomCopy = JSON.parse(JSON.stringify(c.room));
-    roomCopy.id = newId;
-    roomsOut.push(roomCopy);
-    roomNames.push(c.room.name);
-    remapRoomState(c.room.id, newId, c.state, mergedState);
-  }
-  const payloadHash = await sha1Hex('merge|' + roomNames.join('|'));
-  const payload = {
-    generatedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
-    rooms: roomsOut,
-    payloadHash,
-    taxonomy: baseTaxonomy,
-    defectByCat: baseDefectByCat,
-  };
-  return { payload, mergedState };
-}
-
-async function applyMergedPayload(payload, mergedState){
-  DATA = payload;
-  state = mergedState;
-  TAXO_BY_CAT = DATA.taxonomy || {};
-  DEFECT_BY_CAT = DATA.defectByCat || {};
-  DEFECT_FALLBACK = null;
-  for (const e of Object.values(TAXO_BY_CAT)) {
-    if (e && e['大类'] && DEFECT_GROUP_REGEX.test(e['大类']) && !DEFECT_FALLBACK) DEFECT_FALLBACK = e;
-  }
-  localStorage.setItem(HASH_KEY, DATA.payloadHash);
-  localStorage.setItem(STATE_KEY, JSON.stringify(state));
-  localStorage.removeItem(IDX_KEY);
-  persistImportedDataset();
-}
-
-function renderMergeFileList(){
-  const listEl = document.getElementById('mergeFileList');
-  const mergeBtn = document.getElementById('mergeBtn');
-  if (!listEl) return;
-  const okCount = mergeParsedList.filter(r => r.ok).length;
-  if (!mergeParsedList.length) {
-    listEl.innerHTML = '';
-    if (mergeBtn) mergeBtn.disabled = true;
-    return;
-  }
-  listEl.innerHTML = mergeParsedList.map(r => {
-    if (r.ok) {
-      return `<div class="merge-file-item ok">✅ <b>${escapeHtml(r.fileName)}</b> — ${r.data.rooms.length} 个房型</div>`;
-    }
-    return `<div class="merge-file-item err">❌ <b>${escapeHtml(r.fileName)}</b> — ${escapeHtml(r.error)}</div>`;
-  }).join('');
-  if (mergeBtn) mergeBtn.disabled = okCount < 1;
-}
-
-function renderMergeDupPanel(){
-  const panel = document.getElementById('mergeDupPanel');
-  const table = document.getElementById('mergeDupTable');
-  if (!panel || !table) return;
-  const okSnaps = mergeParsedList.filter(r => r.ok);
-  const candidates = collectMergeCandidates(okSnaps);
-  const dupGroups = buildDuplicateGroups(candidates);
-  if (!dupGroups.length) {
-    panel.classList.remove('visible');
-    table.innerHTML = '';
-    return;
-  }
-  panel.classList.add('visible');
-  let firstSeen = new Set();
-  table.innerHTML = dupGroups.map(g => {
-    const rows = g.items.map(it => {
-      const isFirst = !firstSeen.has(g.name);
-      if (isFirst) firstSeen.add(g.name);
-      const done = isRoomDoneWithState(it.room, it.state);
-      const status = done ? '<span class="pill-done">已完成</span>' : '<span class="pill-todo">未完成</span>';
-      return `<div class="dup-row">
-        <label><input type="checkbox" id="dup_${it.key}" data-key="${escapeHtml(it.key)}" ${isFirst ? 'checked' : ''}>
-        <span>${escapeHtml(it.fileName)} · ${it.room.tokens.length} 个分词 ${status}</span></label>
-      </div>`;
-    }).join('');
-    return `<div class="dup-group"><h5>${escapeHtml(g.name)}</h5>${rows}</div>`;
-  }).join('');
-}
 
 function initMergeWizard(){
   const mergeInput = document.getElementById('mergeFilesInput');
@@ -868,7 +621,7 @@ function initMergeWizard(){
       const { payload, mergedState } = await mergeSnapshots(selected, base.taxonomy || {}, base.defectByCat || {});
       await applyMergedPayload(payload, mergedState);
       const html = buildSnapshotHtmlString(payload, mergedState);
-      downloadSnapshotHtml(html, `房型分词验收_快照_合并_${timestampSlug()}.html`);
+      downloadSnapshotHtml(html, `酒店名称分词验收_快照_合并_${timestampSlug()}.html`);
       enterBoard();
     } catch(err) {
       if (mergeErr) mergeErr.innerHTML = `<div class="err">❌ ${escapeHtml(err.message)}</div>`;
@@ -878,152 +631,147 @@ function initMergeWizard(){
   };
 }
 
-function parseTaxonomyXlsx(arrayBuf){
-  const wb = XLSX.read(arrayBuf, {type:'array'});
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
-  if (aoa.length < 2) throw new Error('表为空');
-  // Find header row: required columns must all be present
-  const required = ['大类','一级子类','二级子类','定义','举例','中文房型名称是否允许填写','对应运营审核大类','对应模型的category'];
-  let headerRow = null, headerIdx = -1;
-  for (let i=0;i<Math.min(aoa.length, 5);i++){
-    const cells = aoa[i].map(c => c==null ? '' : String(c).trim());
-    if (required.every(r => cells.includes(r))) { headerRow = cells; headerIdx = i; break; }
-  }
-  if (!headerRow) {
-    throw new Error('表头不符合要求。需要包含以下列：\n' + required.join('、'));
-  }
-  const colIdx = {};
-  required.forEach(k => colIdx[k] = headerRow.indexOf(k));
-  const entries = [];
-  let cur大类 = null;
-  let cur大类定义 = null;
-  let cur一级子类 = null;
-  let last_entry = null;
-  for (let i=headerIdx+1;i<aoa.length;i++){
-    const row = aoa[i];
-    if (!row) continue;
-    const get = (k) => { const v = row[colIdx[k]]; return v==null ? null : String(v).trim() || null; };
-    const da = get('大类'), l1 = get('一级子类'), l2 = get('二级子类');
-    const definition = get('定义'), examples = get('举例'), allow = get('中文房型名称是否允许填写');
-    const opsdoc = get('对应运营审核大类');
-    const cat = get('对应模型的category');
-    // 大类定义 row
-    if (da && da.startsWith('定义：')) { cur大类定义 = da.slice('定义：'.length).trim(); continue; }
-    if (da) { cur大类 = da; cur大类定义 = null; cur一级子类 = null; }
-    const isRealL1 = !!l1 && (l1.includes('/') || l1.includes('(') || l1.includes('（'));
-    if (isRealL1) cur一级子类 = l1;
-    const l1Use = cur一级子类;
-    if (!l1 && !l2 && !definition && !examples && !cat && !opsdoc) continue;
-    // continuation row
-    const isCont = (!isRealL1) && (l2==null) && last_entry && last_entry['一级子类']===l1Use;
-    if (isCont) {
-      if (definition) last_entry['定义'] = (last_entry['定义']||'') + (last_entry['定义']?' ':'') + definition;
-      if (examples) last_entry['举例'] = (last_entry['举例']||'') + (last_entry['举例']?'；':'') + examples;
-      if (opsdoc) last_entry['对应审核大类'] = (last_entry['对应审核大类']||'') + (last_entry['对应审核大类']?'；':'') + opsdoc;
-      if (cat) last_entry['category'] = cat;
-      continue;
-    }
-    const e = {
-      '大类': cur大类, '大类定义': cur大类定义,
-      '一级子类': l1Use, '二级子类': l2,
-      '定义': definition, '举例': examples,
-      '中文房型名称是否允许填写': allow,
-      '对应审核大类': opsdoc,
-      'category': cat,
-    };
-    entries.push(e);
-    last_entry = e;
-  }
-  return { entries };
+
+function parseJsonCell(val){
+  if (val == null || val === '') return null;
+  if (typeof val === 'object') return val;
+  const s = String(val).trim();
+  if (!s || s === 'null') return null;
+  try { return JSON.parse(s); } catch(e) { return null; }
 }
 
-function buildTaxoIndices(){
-  TAXO_BY_CAT = {};
-  DEFECT_BY_CAT = {};
-  DEFECT_FALLBACK = null;
-  for (const e of TAXO_ENTRIES) {
-    // Taxonomy xlsx uses DEFECT_RAW_KEY ("defect") as the placeholder category for the
-    // 缺陷信息 row; show it as DEFECT_DISPLAY_NAME ("房型缺陷") in the UI.
-    if (e.category === DEFECT_RAW_KEY) e.category = DEFECT_DISPLAY_NAME;
-    if (e.category) TAXO_BY_CAT[e.category] = e;
-    if (e['大类'] && DEFECT_GROUP_REGEX.test(e['大类'])) {
-      if (!DEFECT_FALLBACK) DEFECT_FALLBACK = e;
-      if (e.category) DEFECT_BY_CAT[e.category] = e;
-    }
+/** Unwrap E列 segmentation_result: {"segmentation_result":"[\"a\",\"b\"]"} → ["a","b"] */
+function unwrapSegmentation(val){
+  const obj = parseJsonCell(val);
+  if (!obj) return null;
+  if (Array.isArray(obj)) return obj;
+  if (obj.segmentation_result != null) {
+    const inner = typeof obj.segmentation_result === 'string'
+      ? parseJsonCell(obj.segmentation_result)
+      : obj.segmentation_result;
+    return Array.isArray(inner) ? inner : null;
   }
+  return null;
 }
 
-function parseDataXlsx(arrayBuf){
-  const wb = XLSX.read(arrayBuf, {type:'array'});
-  const ws = wb.Sheets[wb.SheetNames[0]];
-  const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
-  if (aoa.length < 2) throw new Error('表为空');
-  const required = ['roomName','phrase','category','defect','defectType'];
-  const cells = aoa[0].map(c => c==null ? '' : String(c).trim());
-  const missing = required.filter(r => !cells.includes(r));
-  if (missing.length) {
-    throw new Error('表头缺少必需列：' + missing.join('、') + '\n实际表头：' + cells.filter(Boolean).join('、'));
+/** Unwrap F列 ext: {"extraInfo":"[{token,category,...}]"} → [...] */
+function unwrapExt(val){
+  const obj = parseJsonCell(val);
+  if (!obj) return null;
+  if (Array.isArray(obj)) return obj;
+  if (obj.extraInfo != null) {
+    const inner = typeof obj.extraInfo === 'string'
+      ? parseJsonCell(obj.extraInfo)
+      : obj.extraInfo;
+    return Array.isArray(inner) ? inner : null;
   }
-  const colIdx = {};
-  required.forEach(k => colIdx[k] = cells.indexOf(k));
-  const rows = [];
-  const roomSet = new Set();
-  const catSet = new Set();
-  for (let i=1;i<aoa.length;i++){
-    const row = aoa[i]; if (!row) continue;
-    const room = row[colIdx.roomName];
-    if (room == null || String(room).trim()==='') continue;
-    const phrase = row[colIdx.phrase];
-    const category = row[colIdx.category];
-    const defect = row[colIdx.defect];
-    const defectType = row[colIdx.defectType];
-    const defectBool = (defect===true || String(defect).trim().toLowerCase() === 'true' || defect===1 || String(defect).trim()==='1');
-    rows.push({
-      roomName: String(room),
-      phrase: phrase==null ? '' : String(phrase),
-      category: category==null ? null : String(category).trim() || null,
-      defect: defectBool,
-      defectType: defectType==null ? null : String(defectType),
-    });
-    roomSet.add(String(room));
-    if (category!=null && String(category).trim()) catSet.add(String(category).trim());
-  }
-  return { rows, rooms: roomSet.size, categories: catSet.size };
+  return null;
 }
 
-async function buildPayloadFromRaw(rows, hashSeed){
-  // group by room
-  const byRoom = new Map();
-  for (const r of rows) {
-    if (!byRoom.has(r.roomName)) byRoom.set(r.roomName, []);
-    byRoom.get(r.roomName).push(r);
-  }
-  const roomList = Array.from(byRoom.keys());
-  const roomsOut = [];
-  let idx = 0;
-  for (const name of roomList) {
-    const tokens = byRoom.get(name).map((r, i) => ({
+function wrapSegmentationResult(phrases){
+  return JSON.stringify({ segmentation_result: JSON.stringify(phrases) });
+}
+
+function wrapExtResult(items){
+  return JSON.stringify({ extraInfo: JSON.stringify(items) });
+}
+
+function formatCatLabel(t){
+  if (!t || !t.category) return UNCATEGORIZED;
+  return t.subCategory ? (t.category + ' / ' + t.subCategory) : t.category;
+}
+
+function buildTokensFromRow(phrases, classItems){
+  if (Array.isArray(classItems) && classItems.length){
+    return classItems.map((item, i) => ({
       i,
-      phrase: r.phrase,
-      category: r.category || UNCATEGORIZED,
-      defect: !!r.defect,
-      defectType: r.defectType,
+      phrase: String(item.token || '').trim(),
+      category: String(item.category || '').trim() || UNCATEGORIZED,
+      subCategory: item.subCategory ? String(item.subCategory).trim() : '',
+      elements: item.elements || null,
     }));
-    roomsOut.push({
-      id: 'r' + String(idx).padStart(4,'0'),
-      name,
+  }
+  const list = Array.isArray(phrases) ? phrases : [];
+  return list.map((p, i) => ({
+    i, phrase: String(p).trim(), category: UNCATEGORIZED, subCategory: '', elements: null,
+  }));
+}
+
+function findCol(headers, names){
+  for (const n of names) {
+    const i = headers.findIndex(h => h.toLowerCase() === n.toLowerCase());
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+function parseHotelXlsx(arrayBuf){
+  const wb = XLSX.read(arrayBuf, {type:'array'});
+  const sheetName = wb.SheetNames[0];
+  const ws = wb.Sheets[sheetName];
+  const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+  if (aoa.length < 2) throw new Error('表为空');
+  const headers = aoa[0].map(c => c == null ? '' : String(c).trim());
+  const idIdx = findCol(headers, ['masterhotelid']);
+  const enIdx = findCol(headers, ['hotelenname', 'current_hotel_en_name']);
+  const cnIdx = findCol(headers, ['hotelcnname', 'current_hotel_cn_name']);
+  const infoIdx = findCol(headers, ['hotel_info']);
+  const segIdx = findCol(headers, ['segmentation_result']);
+  const extIdx = findCol(headers, ['ext']);
+  // legacy fallbacks
+  const legacySeg = headers.findIndex(h => /分词结果/.test(h));
+  const legacyExt = headers.findIndex(h => /分类结果/.test(h));
+  const fUse = segIdx >= 0 ? segIdx : (legacySeg >= 0 ? legacySeg : 4);
+  const jUse = extIdx >= 0 ? extIdx : (legacyExt >= 0 ? legacyExt : 5);
+  if (idIdx < 0) throw new Error('缺少列 masterhotelid');
+  if (enIdx < 0) throw new Error('缺少列 hotelenname');
+  const hotels = [];
+  const catSet = new Set();
+  for (let ri = 1; ri < aoa.length; ri++){
+    const row = aoa[ri];
+    if (!row || row[idIdx] == null || String(row[idIdx]).trim() === '') continue;
+    const masterId = String(row[idIdx]).trim();
+    const enName = row[enIdx] == null ? '' : String(row[enIdx]).trim();
+    let cnRaw = cnIdx >= 0 && row[cnIdx] != null ? String(row[cnIdx]).trim() : '';
+    if (cnRaw === 'null') cnRaw = '';
+    const hotelInfo = infoIdx >= 0 ? parseJsonCell(row[infoIdx]) : null;
+    const phrases = unwrapSegmentation(row[fUse]) || (Array.isArray(parseJsonCell(row[fUse])) ? parseJsonCell(row[fUse]) : null);
+    const classItems = unwrapExt(row[jUse]) || (Array.isArray(parseJsonCell(row[jUse])) ? parseJsonCell(row[jUse]) : null);
+    const tokens = buildTokensFromRow(phrases, classItems);
+    tokens.forEach(t => catSet.add(formatCatLabel(t)));
+    hotels.push({
+      id: 'h_' + masterId,
+      masterhotelid: masterId,
+      cnName: cnRaw,
+      enName,
+      hotelInfo: hotelInfo || null,
+      hotelInfoRaw: infoIdx >= 0 && row[infoIdx] != null ? String(row[infoIdx]) : '',
+      star: hotelInfo && hotelInfo.star != null ? hotelInfo.star : '',
+      cityName: hotelInfo && hotelInfo.city_name ? String(hotelInfo.city_name) : '',
+      provinceName: hotelInfo && hotelInfo.province_name ? String(hotelInfo.province_name) : '',
+      brandInfo: '',
+      geoInfo: '',
+      sourceRowIndex: ri,
       tokens,
     });
-    idx++;
   }
-  const hash = await sha1Hex(hashSeed + '|' + roomList.join('|'));
+  if (!hotels.length) throw new Error('未解析到有效酒店行');
+  return { headers, rows: aoa, sheetName, hotels, categories: catSet.size };
+}
+
+async function buildPayloadFromHotels(parsed, hashSeed){
+  const hash = await sha1Hex(hashSeed + '|' + parsed.hotels.map(h => h.id).join('|'));
   return {
     generatedAt: new Date().toISOString().slice(0,19).replace('T',' '),
-    rooms: roomsOut,
+    sheetName: parsed.sheetName,
+    sourceHeaders: parsed.headers,
+    sourceRows: parsed.rows,
+    hotels: parsed.hotels,
+    categoryOpts: [...new Set(parsed.hotels.flatMap(h => h.tokens.map(formatCatLabel)))].sort(),
     payloadHash: hash,
   };
 }
+
 
 function enterBoard(){
   document.getElementById('importWizard').style.display = 'none';
@@ -1048,21 +796,13 @@ function syncToolbarHeight(){
 
 // ====== Board init (the original IIFE body) ======
 function initBoard(){
-  // category color: stable hash -> HSL
-  function hash(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h*31 + s.charCodeAt(i))|0; } return h; }
-  function catColor(cat){ const h = Math.abs(hash(cat))%360; return `hsl(${h} 55% 42%)`; }
-  function catBgSoft(cat){ const h = Math.abs(hash(cat))%360; return `hsl(${h} 75% 90%)`; }
-
-  // Suggested-classification options come solely from the taxonomy xlsx's "对应模型的category"
-  // column (TAXO_BY_CAT keys, deduplicated; the literal "defect" was already renamed to
-  // DEFECT_DISPLAY_NAME by buildTaxoIndices).
-  const suggestOpts = Object.keys(TAXO_BY_CAT || {});
+  const suggestOpts = CATEGORY_OPTS.length ? CATEGORY_OPTS.slice() : [...new Set(DATA.hotels.flatMap(h => h.tokens.map(formatCatLabel)))];
 
   // current room index
   let curIdx = 0;
   const savedIdx = parseInt(localStorage.getItem(IDX_KEY)||'0',10);
-  if (!isNaN(savedIdx) && savedIdx >= 0 && savedIdx < DATA.rooms.length) curIdx = savedIdx;
-  document.getElementById('totalIdx').textContent = DATA.rooms.length;
+  if (!isNaN(savedIdx) && savedIdx >= 0 && savedIdx < DATA.hotels.length) curIdx = savedIdx;
+  document.getElementById('totalIdx').textContent = DATA.hotels.length;
 
   function getKey(roomId, ti){ return roomId+'__'+ti; }
   let saveTimer;
@@ -1071,28 +811,26 @@ function initBoard(){
     saveTimer = setTimeout(()=>{ localStorage.setItem(STATE_KEY, JSON.stringify(state)); }, SAVE_DEBOUNCE_MS);
   }
 
-  function isRoomDone(room){
-    const rs = getRoomState(room.id) || {};
+  function isHotelDone(hotel){
+    const rs = getHotelState(hotel.id) || {};
     if (rs.phraseWrong) {
       const hasEdit = (rs.newTokens && rs.newTokens.length>0) || (rs.deletedTokenIdx && rs.deletedTokenIdx.length>0);
       if (hasEdit) return true;
     }
-    return room.tokens.every(t => {
-      const s = state[getKey(room.id,t.i)];
+    return hotel.tokens.every(t => {
+      const s = state[getKey(hotel.id,t.i)];
       return s && (s.mark==='ok' || s.mark==='ng');
     });
   }
   // expose for stats / undone helpers
-  window._isRoomDone = isRoomDone;
+  window._isHotelDone = isHotelDone;
   window._getKey = getKey;
   window._catColor = catColor;
   window._catBgSoft = catBgSoft;
+  window._catTextColor = catTextColor;
 
-  function displayCat(t){ return t.defect ? (t.category + '-' + DEFECT_DISPLAY_NAME) : t.category; }
-  function tooltipEntryFor(t){
-    if (t.defect) return DEFECT_BY_CAT[t.category] || DEFECT_FALLBACK || TAXO_BY_CAT[t.category] || null;
-    return TAXO_BY_CAT[t.category] || null;
-  }
+  function displayCat(t){ return formatCatLabel(t); }
+  function tooltipEntryFor(t){ return null; }
 
   // Searchable combobox: replaces the host element with [input + filterable menu].
   // options: string[]; initial: string|null; onChange: (val)=>void
@@ -1177,12 +915,12 @@ function initBoard(){
   const cardsEl = document.getElementById('cards');
   function renderAll(){
     cardsEl.innerHTML = '';
-    if (DATA.rooms.length === 0) {
-      cardsEl.innerHTML = '<div class="all-done">没有房型数据</div>';
+    if (DATA.hotels.length === 0) {
+      cardsEl.innerHTML = '<div class="all-done">没有酒店数据</div>';
       return;
     }
-    DATA.rooms.forEach((room, idx) => {
-      const card = renderRoom(room, idx);
+    DATA.hotels.forEach((hotel, idx) => {
+      const card = renderHotel(hotel, idx);
       cardsEl.appendChild(card);
     });
     showCurrent();
@@ -1196,29 +934,29 @@ function initBoard(){
     document.getElementById('curIdx').textContent = curIdx + 1;
     localStorage.setItem(IDX_KEY, String(curIdx));
     document.getElementById('prevBtn').disabled = curIdx === 0;
-    document.getElementById('nextBtn').disabled = curIdx === DATA.rooms.length - 1;
+    document.getElementById('nextBtn').disabled = curIdx === DATA.hotels.length - 1;
     window.scrollTo({top:0, behavior:'smooth'});
     hideTip();
   }
 
   function gotoNext(){
-    if (curIdx < DATA.rooms.length - 1) { curIdx++; showCurrent(); }
+    if (curIdx < DATA.hotels.length - 1) { curIdx++; showCurrent(); }
     else { showAllDone(); }
   }
   function gotoPrev(){
     if (curIdx > 0) { curIdx--; showCurrent(); }
   }
   function showAllDone(){
-    const done = DATA.rooms.every(isRoomDone);
+    const done = DATA.hotels.every(isHotelDone);
     if (done) {
-      cardsEl.innerHTML = '<div class="all-done">🎉 全部 ' + DATA.rooms.length + ' 条房型审核完成！点击 "📥 导出 xlsx" 或 "📄 导出 HTML" 提交结果。</div>';
+      cardsEl.innerHTML = '<div class="all-done">🎉 全部 ' + DATA.hotels.length + ' 条酒店审核完成！点击 "📥 导出 xlsx" 或 "📄 导出 HTML" 提交结果。</div>';
     }
   }
 
-  function renderRoom(room, idx){
+  function renderHotel(hotel, idx){
     const card = document.createElement('section');
     card.className = 'card hidden';
-    card.dataset.id = room.id;
+    card.dataset.id = hotel.id;
 
     const pw = document.createElement('div');
     pw.className = 'pw-corner';
@@ -1227,33 +965,61 @@ function initBoard(){
 
     const titleEl = document.createElement('h2');
     titleEl.className = 'room-title';
-    titleEl.appendChild(buildColoredTitle(room));
+    titleEl.appendChild(buildColoredTitle(hotel));
     card.appendChild(titleEl);
 
     const meta = document.createElement('div');
     meta.className = 'room-meta';
-    meta.textContent = `房型 ID ${room.id} · 共 ${room.tokens.length} 个分词`;
+    const locBits = [hotel.cityName, hotel.provinceName].filter(Boolean).join(' · ');
+    meta.innerHTML = `酒店 ID <a href="https://hk.trip.com/hotels/detail/?hotelId=${encodeURIComponent(hotel.masterhotelid)}" target="_blank" rel="noopener noreferrer"><b>${escapeHtml(hotel.masterhotelid)}</b></a> · 共 ${hotel.tokens.length} 个分词` +
+      (hotel.cnName ? `<br>中文名：${escapeHtml(hotel.cnName)}` : '') +
+      (hotel.star !== '' && hotel.star != null ? ` · ⭐ ${escapeHtml(String(hotel.star))}` : '') +
+      (locBits ? ` · ${escapeHtml(locBits)}` : '');
     card.appendChild(meta);
 
-    const rs = getRoomState(room.id) || {};
+    const rs = getHotelState(hotel.id) || {};
     const flag = document.createElement('div');
     flag.className = 'room-flag' + (rs.phraseWrong ? ' on' : '');
     flag.innerHTML = `
       <label class="toggle">
         <input type="checkbox" class="pw-toggle" ${rs.phraseWrong?'checked':''}>
-        <span>⚠ 此房型分词整体有问题（需给出正确分词和分类）</span>
+        <span>⚠ 此酒店名称分词整体有问题（需给出正确分词和分类）</span>
       </label>
     `;
+    if (rs.phraseWrong) flag.classList.add('on');
     if (rs.phraseWrong) card.classList.add('phrase-wrong');
+
+    if (hotel.hotelInfo || hotel.hotelInfoRaw) {
+      const extra = document.createElement('details');
+      extra.style.cssText = 'margin-bottom:16px;font-size:12px;color:var(--muted);';
+      const pretty = hotel.hotelInfo
+        ? JSON.stringify(hotel.hotelInfo, null, 2)
+        : hotel.hotelInfoRaw;
+      extra.innerHTML = '<summary style="cursor:pointer;font-weight:600;color:#374151;">hotel_info</summary>' +
+        `<pre style="white-space:pre-wrap;margin:8px 0 0;padding:8px;background:#f9fafb;border-radius:6px;font-size:11px;">${escapeHtml(pretty)}</pre>`;
+      card.appendChild(extra);
+    }
 
     card.appendChild(flag);
 
-    // new-token area (sibling of token-list)
+    // 方案A：修正区（备注 + 正确分词）
+    const fixPanel = document.createElement('div');
+    fixPanel.className = 'fix-panel' + (rs.phraseWrong ? ' visible' : '');
+    fixPanel.innerHTML = `<div class="fix-panel-title">✎ 修正区 · 请填写正确分词与分类</div>`;
+
+    const remarkWrap = document.createElement('div');
+    remarkWrap.className = 'phrase-remark-wrap';
+    remarkWrap.innerHTML = `<label>分词有误备注（可选）<textarea class="phrase-remark" rows="2">${escapeHtml(rs.phraseRemark||'')}</textarea></label>`;
+    remarkWrap.querySelector('.phrase-remark').addEventListener('input', (e) => {
+      ensureHotelState(hotel.id).phraseRemark = e.target.value;
+      saveState();
+    });
+    fixPanel.appendChild(remarkWrap);
+
     const ntArea = document.createElement('div');
     ntArea.className = 'new-token-area';
-    ntArea.style.display = rs.phraseWrong ? 'block' : 'none';
     ntArea.innerHTML = `
-      <div class="nta-title">▾ 正确的分词（人工重切）</div>
+      <div class="nta-title">正确的分词（人工重切）</div>
       <div class="token-list nt-list"></div>
       <div class="empty-tip nt-empty" style="display:none;">暂无新分词，点击下方「➕ 添加分词」开始填写。</div>
       <button type="button" class="add-nt-btn">➕ 添加分词</button>
@@ -1261,17 +1027,17 @@ function initBoard(){
     const ntList = ntArea.querySelector('.nt-list');
     const ntEmpty = ntArea.querySelector('.nt-empty');
     function refreshNtEmpty(){
-      const has = (getRoomState(room.id)||{}).newTokens && (getRoomState(room.id).newTokens.length>0);
+      const has = (getHotelState(hotel.id)||{}).newTokens && (getHotelState(hotel.id).newTokens.length>0);
       ntEmpty.style.display = has ? 'none' : 'block';
     }
     function renderNtList(){
       ntList.innerHTML = '';
-      const arr = ((getRoomState(room.id)||{}).newTokens) || [];
-      arr.forEach((nt, i) => ntList.appendChild(renderNewTokenRow(room, i)));
+      const arr = ((getHotelState(hotel.id)||{}).newTokens) || [];
+      arr.forEach((nt, i) => ntList.appendChild(renderNewTokenRow(hotel, i)));
       refreshNtEmpty();
     }
     flag.querySelector('.pw-toggle').onchange = (e)=>{
-      const cur = ensureRoomState(room.id);
+      const cur = ensureHotelState(hotel.id);
       const checked = !!e.target.checked;
       cur.phraseWrong = checked;
       if (!checked) {
@@ -1281,11 +1047,11 @@ function initBoard(){
       saveState();
       flag.classList.toggle('on', cur.phraseWrong);
       card.classList.toggle('phrase-wrong', cur.phraseWrong);
-      ntArea.style.display = cur.phraseWrong ? 'block' : 'none';
+      fixPanel.classList.toggle('visible', cur.phraseWrong);
       updateCounts();
     };
     ntArea.querySelector('.add-nt-btn').onclick = ()=>{
-      const cur = ensureRoomState(room.id);
+      const cur = ensureHotelState(hotel.id);
       cur.newTokens = cur.newTokens || [];
       cur.newTokens.push({phrase:'', category:'', remark:''});
       saveState();
@@ -1295,87 +1061,96 @@ function initBoard(){
     };
     card._renderNtList = renderNtList;
     renderNtList();
-    card.appendChild(ntArea);
+    fixPanel.appendChild(ntArea);
+    card.appendChild(fixPanel);
 
+    const origSection = document.createElement('div');
+    origSection.className = 'orig-token-section';
+    origSection.innerHTML = '<div class="orig-title">原系统分词（可软删除后由上方修正区替换）</div>';
     const list = document.createElement('div');
     list.className = 'token-list';
-    room.tokens.forEach(t => list.appendChild(renderTokenRow(room, t)));
-    card.appendChild(list);
+    hotel.tokens.forEach(t => list.appendChild(renderTokenRow(hotel, t)));
+    origSection.appendChild(list);
+    card.appendChild(origSection);
 
     return card;
   }
 
   // Build colored title by slicing roomName into segments matching tokens in order.
-  function buildColoredTitle(room){
-    const wrap = document.createElement('span');
-    // Normalize for matching: lowercase + fold full-width punctuation/digits/letters to half-width.
-    // Crucially the original-case room.name is preserved for display; the normalized form is only
-    // used as a haystack/needle when locating where each phrase sits inside the name.
+  function buildColoredTitle(hotel){
+    const flow = document.createElement('span');
+    flow.className = 'title-flow';
     function fold(s){
       if (!s) return '';
       let out = '';
       for (let i=0;i<s.length;i++){
         const code = s.charCodeAt(i);
-        // Full-width ASCII (FF01–FF5E) → half-width (0021–007E)
         if (code >= 0xFF01 && code <= 0xFF5E) out += String.fromCharCode(code - 0xFEE0);
-        // Ideographic space → ASCII space
         else if (code === 0x3000) out += ' ';
         else out += s[i];
       }
       return out.toLowerCase();
     }
-    const foldedName = fold(room.name);
+    const foldedName = fold(hotel.enName);
     let pos = 0;
     const segs = [];
-    for (const t of room.tokens) {
+    function pushSeg(text, cat){
+      if (!text) return;
+      if (!cat && !text.trim()) {
+        if (segs.length) segs[segs.length - 1].text += text;
+        else segs.push({ text, cat: null });
+        return;
+      }
+      segs.push({ text, cat });
+    }
+    for (const t of hotel.tokens) {
       const phrase = t.phrase || '';
       const idx = phrase ? foldedName.indexOf(fold(phrase), pos) : -1;
-      if (idx < 0) {
-        // can't find this phrase — skip it but keep what we already matched
-        // (handles duplicate tokens that the model emitted incorrectly)
-        break;
-      }
-      if (idx > pos) segs.push({text: room.name.slice(pos, idx), cat: null});
-      // slice from the original room.name so display preserves original case + width
-      segs.push({text: room.name.slice(idx, idx + phrase.length), cat: displayCat(t)});
+      if (idx < 0) break;
+      if (idx > pos) pushSeg(hotel.enName.slice(pos, idx), null);
+      pushSeg(hotel.enName.slice(idx, idx + phrase.length), displayCat(t));
       pos = idx + phrase.length;
     }
-    if (pos < room.name.length) segs.push({text: room.name.slice(pos), cat: null});
-    if (segs.length === 0) {
-      wrap.textContent = room.name;
-      return wrap;
+    if (pos < hotel.enName.length) pushSeg(hotel.enName.slice(pos), null);
+    if (!segs.length) {
+      flow.textContent = hotel.enName;
+      return flow;
     }
     segs.forEach(s => {
       const sp = document.createElement('span');
-      sp.className = 'seg';
-      sp.textContent = s.text;
       if (s.cat) {
-        sp.style.background = catBgSoft(s.cat);
-        sp.style.color = catColor(s.cat);
+        sp.className = 'seg seg-tok';
+        sp.textContent = s.text;
+        sp.style.setProperty('--tok-bg', catBgSoft(s.cat));
+        sp.style.setProperty('--tok-text', catTextColor(s.cat));
+        sp.style.setProperty('--tok-border', catBorderColor(s.cat));
         sp.title = s.cat;
+      } else {
+        sp.className = 'seg seg-plain';
+        sp.textContent = s.text;
       }
-      wrap.appendChild(sp);
+      flow.appendChild(sp);
     });
-    return wrap;
+    return flow;
   }
 
   function isTokenDeleted(roomId, ti){
-    const rs = getRoomState(roomId);
+    const rs = getHotelState(roomId);
     if (!rs || !rs.deletedTokenIdx) return false;
     return rs.deletedTokenIdx.indexOf(ti) >= 0;
   }
   function setTokenDeleted(roomId, ti, on){
-    const cur = ensureRoomState(roomId);
+    const cur = ensureHotelState(roomId);
     cur.deletedTokenIdx = cur.deletedTokenIdx || [];
     const i = cur.deletedTokenIdx.indexOf(ti);
     if (on && i < 0) cur.deletedTokenIdx.push(ti);
     if (!on && i >= 0) cur.deletedTokenIdx.splice(i,1);
     saveState();
   }
-  function applyTokenVisual(row, room, t){
-    const k = getKey(room.id, t.i);
+  function applyTokenVisual(row, hotel, t){
+    const k = getKey(hotel.id, t.i);
     const s = state[k] || {};
-    const deleted = isTokenDeleted(room.id, t.i);
+    const deleted = isTokenDeleted(hotel.id, t.i);
     row.classList.toggle('ok', s.mark==='ok');
     row.classList.toggle('ng', s.mark==='ng');
     row.classList.toggle('deleted', deleted);
@@ -1386,14 +1161,14 @@ function initBoard(){
     delBtn.classList.toggle('active', deleted);
   }
 
-  function renderTokenRow(room, t){
+  function renderTokenRow(hotel, t){
     const row = document.createElement('div');
     row.className = 'token-row';
-    const k = getKey(room.id, t.i);
+    const k = getKey(hotel.id, t.i);
     const s = state[k] || {};
     if (s.mark==='ok') row.classList.add('ok');
     if (s.mark==='ng') row.classList.add('ng');
-    if (isTokenDeleted(room.id, t.i)) row.classList.add('deleted');
+    if (isTokenDeleted(hotel.id, t.i)) row.classList.add('deleted');
     const dc = displayCat(t);
     row.innerHTML = `
       <span class="phrase">${escapeHtml(t.phrase)}</span>
@@ -1404,12 +1179,12 @@ function initBoard(){
         <button class="ok-btn ${s.mark==='ok'?'active':''}" title="标记为正确">✓</button>
         <button class="ng-btn ${s.mark==='ng'?'active':''}" title="标记为错误">✗</button>
       </span>
-      <button class="del-btn" title="软删除该系统分词">${isTokenDeleted(room.id,t.i)?'↺':'🗑'}</button>
+      <button class="del-btn" title="软删除该系统分词">${isTokenDeleted(hotel.id,t.i)?'↺':'🗑'}</button>
       <div class="detail">
         <label>建议正确分类：
           <span class="suggest-host"></span>
         </label>
-        <textarea class="remark" placeholder="备注（原因 / 期望）" rows="1">${escapeHtml(s.remark||'')}</textarea>
+        <textarea class="remark" placeholder="分类有误备注（可选）" rows="1">${escapeHtml(s.remark||'')}</textarea>
       </div>
     `;
     mountCombo(row.querySelector('.suggest-host'), suggestOpts, s.suggested || '', (val)=>{
@@ -1423,18 +1198,18 @@ function initBoard(){
       const cur = state[k] || (state[k]={});
       const next = cur.mark === 'ok' ? null : 'ok';
       cur.mark = next;
-      if (next) setTokenDeleted(room.id, t.i, false);
+      if (next) setTokenDeleted(hotel.id, t.i, false);
       saveState();
-      applyTokenVisual(row, room, t);
+      applyTokenVisual(row, hotel, t);
       updateCounts();
     };
     ngBtn.onclick = ()=>{
       const cur = state[k] || (state[k]={});
       const next = cur.mark === 'ng' ? null : 'ng';
       cur.mark = next;
-      if (next) setTokenDeleted(room.id, t.i, false);
+      if (next) setTokenDeleted(hotel.id, t.i, false);
       saveState();
-      applyTokenVisual(row, room, t);
+      applyTokenVisual(row, hotel, t);
       updateCounts();
     };
     row.querySelector('.remark').oninput = (e)=>{
@@ -1443,14 +1218,14 @@ function initBoard(){
       saveState();
     };
     row.querySelector('.del-btn').onclick = ()=>{
-      const nowDel = !isTokenDeleted(room.id, t.i);
-      setTokenDeleted(room.id, t.i, nowDel);
+      const nowDel = !isTokenDeleted(hotel.id, t.i);
+      setTokenDeleted(hotel.id, t.i, nowDel);
       if (nowDel) {
         const cur = state[k] || (state[k]={});
         cur.mark = null;
         saveState();
       }
-      applyTokenVisual(row, room, t);
+      applyTokenVisual(row, hotel, t);
       updateCounts();
     };
     const info = row.querySelector('.info');
@@ -1461,8 +1236,8 @@ function initBoard(){
     return row;
   }
 
-  function renderNewTokenRow(room, ntIdx){
-    const cur = ensureRoomState(room.id);
+  function renderNewTokenRow(hotel, ntIdx){
+    const cur = ensureHotelState(hotel.id);
     cur.newTokens = cur.newTokens || [];
     const nt = cur.newTokens[ntIdx] || {phrase:'', category:'', remark:''};
     const row = document.createElement('div');
@@ -1472,7 +1247,7 @@ function initBoard(){
       <span class="new-cat-host"></span>
       <span class="badge-color" style="background:${nt.category?catColor(nt.category):'#e5e7eb'};"></span>
       <button type="button" class="info-btn" title="查看该分类定义">i</button>
-      <textarea class="new-remark" placeholder="备注（可选）" rows="1">${escapeHtml(nt.remark||'')}</textarea>
+      <textarea class="new-remark" placeholder="分类有误备注（可选）" rows="1">${escapeHtml(nt.remark||'')}</textarea>
       <button type="button" class="nt-remove" title="移除该新分词">×</button>
     `;
     const phraseEl = row.querySelector('.new-phrase');
@@ -1482,19 +1257,19 @@ function initBoard(){
     const removeEl = row.querySelector('.nt-remove');
     let curCat = nt.category || '';
     mountCombo(row.querySelector('.new-cat-host'), suggestOpts, curCat, (val)=>{
-      const arr = getRoomState(room.id).newTokens;
+      const arr = getHotelState(hotel.id).newTokens;
       arr[ntIdx].category = val || '';
       curCat = val || '';
       colorEl.style.background = val ? catColor(val) : '#e5e7eb';
       saveState();
     }, '搜索分类…');
     phraseEl.oninput = (e)=>{
-      const arr = getRoomState(room.id).newTokens;
+      const arr = getHotelState(hotel.id).newTokens;
       arr[ntIdx].phrase = e.target.value;
       saveState();
     };
     remarkEl.oninput = (e)=>{
-      const arr = getRoomState(room.id).newTokens;
+      const arr = getHotelState(hotel.id).newTokens;
       arr[ntIdx].remark = e.target.value;
       saveState();
     };
@@ -1502,25 +1277,26 @@ function initBoard(){
       e.stopPropagation();
       if (!curCat) { alert('请先选择一个分类'); return; }
       // for new tokens, use TAXO_BY_CAT directly
-      toggleTip(infoEl, curCat, TAXO_BY_CAT[curCat] || null);
+      toggleTip(infoEl, curCat, null);
     };
     removeEl.onclick = ()=>{
-      const arr = getRoomState(room.id).newTokens;
+      const arr = getHotelState(hotel.id).newTokens;
       arr.splice(ntIdx, 1);
       saveState();
-      const card = document.querySelector(`[data-id="${room.id}"]`);
+      const card = document.querySelector(`[data-id="${hotel.id}"]`);
       if (card && card._renderNtList) card._renderNtList();
     };
     return row;
   }
 
   function updateCounts(){
-    let total = DATA.rooms.length, done = 0;
-    DATA.rooms.forEach(room => { if (isRoomDone(room)) done++; });
+    let total = DATA.hotels.length, done = 0;
+    DATA.hotels.forEach(hotel => { if (isHotelDone(hotel)) done++; });
     const stRoomDone = document.getElementById('stRoomDone');
     const stRoomTotal = document.getElementById('stRoomTotal');
     if (stRoomDone) stRoomDone.textContent = done;
     if (stRoomTotal) stRoomTotal.textContent = total;
+    if (statsMode) renderStatsView();
   }
 
   // tooltip — click only
@@ -1588,15 +1364,15 @@ function initBoard(){
     if (listMode) { renderListView(); return; }
     const q = e.target.value.trim().toLowerCase();
     if (!q) return;
-    const idx = DATA.rooms.findIndex(r => r.name.toLowerCase().includes(q) || r.tokens.some(t=>t.phrase.toLowerCase().includes(q)));
+    const idx = DATA.hotels.findIndex(h => h.enName.toLowerCase().includes(q) || h.tokens.some(t=>t.phrase.toLowerCase().includes(q)));
     if (idx >= 0 && idx !== curIdx) { curIdx = idx; showCurrent(); }
   });
 
   window.markCurrentAllOk = function(){
-    const room = DATA.rooms[curIdx];
-    if (!room) return;
-    room.tokens.forEach(t=>{
-      const k = getKey(room.id, t.i);
+    const hotel = DATA.hotels[curIdx];
+    if (!hotel) return;
+    hotel.tokens.forEach(t=>{
+      const k = getKey(hotel.id, t.i);
       const cur = state[k] || (state[k]={});
       if (!cur.mark) cur.mark = 'ok';
     });
@@ -1605,12 +1381,12 @@ function initBoard(){
   };
 
   window.gotoUndone = function(){
-    const n = DATA.rooms.length;
+    const n = DATA.hotels.length;
     for (let off=1; off<=n; off++){
       const i = (curIdx+off) % n;
-      if (!isRoomDone(DATA.rooms[i])) { curIdx = i; showCurrent(); return; }
+      if (!isHotelDone(DATA.hotels[i])) { curIdx = i; showCurrent(); return; }
     }
-    alert('全部房型已完成 🎉');
+    alert('全部酒店已完成 🎉');
   };
 
   // ----- List view -----
@@ -1621,21 +1397,21 @@ function initBoard(){
   const statsView = document.getElementById('statsView');
   const listGrid = document.getElementById('listGrid');
 
-  function getRoomListMeta(room){
-    const rs = getRoomState(room.id) || {};
+  function getHotelListMeta(hotel){
+    const rs = getHotelState(hotel.id) || {};
     let ngN = 0;
-    room.tokens.forEach(t => {
-      const s = state[getKey(room.id, t.i)];
+    hotel.tokens.forEach(t => {
+      const s = state[getKey(hotel.id, t.i)];
       if (s && s.mark === 'ng') ngN++;
     });
     return { phraseWrong: !!rs.phraseWrong, catWrong: ngN > 0, ngN };
   }
 
   function updateListFilterCounts(){
-    const total = DATA.rooms.length;
+    const total = DATA.hotels.length;
     let pw = 0, cw = 0;
-    DATA.rooms.forEach(room => {
-      const m = getRoomListMeta(room);
+    DATA.hotels.forEach(hotel => {
+      const m = getHotelListMeta(hotel);
       if (m.phraseWrong) pw++;
       if (m.catWrong) cw++;
     });
@@ -1652,27 +1428,27 @@ function initBoard(){
     updateListFilterCounts();
     const q = (document.getElementById('search').value || '').trim().toLowerCase();
     let poolTotal = 0;
-    DATA.rooms.forEach(room => {
-      const m = getRoomListMeta(room);
+    DATA.hotels.forEach(hotel => {
+      const m = getHotelListMeta(hotel);
       if (listFilter === 'phraseWrong' && !m.phraseWrong) return;
       if (listFilter === 'catWrong' && !m.catWrong) return;
       poolTotal++;
     });
     let shown = 0;
-    DATA.rooms.forEach((room, idx) => {
-      const m = getRoomListMeta(room);
+    DATA.hotels.forEach((hotel, idx) => {
+      const m = getHotelListMeta(hotel);
       if (listFilter === 'phraseWrong' && !m.phraseWrong) return;
       if (listFilter === 'catWrong' && !m.catWrong) return;
       if (q) {
-        const hit = room.name.toLowerCase().includes(q) || room.tokens.some(t => (t.phrase||'').toLowerCase().includes(q));
+        const hit = hotel.enName.toLowerCase().includes(q) || hotel.tokens.some(t => (t.phrase||'').toLowerCase().includes(q));
         if (!hit) return;
       }
       shown++;
-      const rs = getRoomState(room.id) || {};
-      const totalTok = room.tokens.length;
+      const rs = getHotelState(hotel.id) || {};
+      const totalTok = hotel.tokens.length;
       let okN = 0, ngN = m.ngN;
-      room.tokens.forEach(t => {
-        const s = state[getKey(room.id, t.i)];
+      hotel.tokens.forEach(t => {
+        const s = state[getKey(hotel.id, t.i)];
         if (s && s.mark==='ok') okN++;
       });
       const done = okN + ngN;
@@ -1680,7 +1456,7 @@ function initBoard(){
       item.className = 'list-item' + (idx===curIdx ? ' current':'');
       const titleSpan = document.createElement('span');
       titleSpan.className = 'name';
-      titleSpan.appendChild(buildColoredTitle(room));
+      titleSpan.appendChild(buildColoredTitle(hotel));
       const idxEl = document.createElement('span');
       idxEl.className = 'idx';
       idxEl.textContent = '#' + (idx+1);
@@ -1689,7 +1465,7 @@ function initBoard(){
       let html = '';
       if (rs.phraseWrong) html += '<span class="pill pw">分词错</span>';
       if (ngN > 0) html += `<span class="pill ng">分类错 ${ngN}</span>`;
-      if (isRoomDone(room)) html += '<span class="pill done">已完成</span>';
+      if (isHotelDone(hotel)) html += '<span class="pill done">已完成</span>';
       else if (done > 0) html += `<span class="pill todo">${done}/${totalTok}</span>`;
       else html += '<span class="pill todo">未审</span>';
       badges.innerHTML = html;
@@ -1706,24 +1482,24 @@ function initBoard(){
     const hint = document.getElementById('listCountHint');
     const filterLabel = listFilter === 'phraseWrong' ? '分词错' : (listFilter === 'catWrong' ? '分类错' : '');
     if (q && shown === 0) {
-      listGrid.innerHTML = `<div style="padding:24px;text-align:center;color:#9ca3af;">没有匹配的房型${filterLabel ? `（${filterLabel}）` : ''}</div>`;
+      listGrid.innerHTML = `<div style="padding:24px;text-align:center;color:#9ca3af;">没有匹配的酒店${filterLabel ? `（${filterLabel}）` : ''}</div>`;
     }
     const header = document.querySelector('#listView h2');
     if (header) {
       if (q) {
         header.textContent = filterLabel
-          ? `📋 房型列表 · ${filterLabel} · 命中 ${shown} / ${poolTotal}（搜索「${q}」）`
-          : `📋 全部房型一览 · 命中 ${shown} / ${DATA.rooms.length}（搜索「${q}」）`;
+          ? `📋 酒店列表 · ${filterLabel} · 命中 ${shown} / ${poolTotal}（搜索「${q}」）`
+          : `📋 全部酒店一览 · 命中 ${shown} / ${DATA.hotels.length}（搜索「${q}」）`;
       } else if (filterLabel) {
-        header.textContent = `📋 房型列表 · ${filterLabel} · ${shown} / ${DATA.rooms.length}（点击任意条进入详情）`;
+        header.textContent = `📋 酒店列表 · ${filterLabel} · ${shown} / ${DATA.hotels.length}（点击任意条进入详情）`;
       } else {
-        header.textContent = '📋 全部房型一览（点击任意条进入详情）';
+        header.textContent = '📋 全部酒店一览（点击任意条进入详情）';
       }
     }
     if (hint) {
       hint.textContent = filterLabel
-        ? `当前筛选：${filterLabel}，共 ${poolTotal} 个房型`
-        : `共 ${DATA.rooms.length} 个房型`;
+        ? `当前筛选：${filterLabel}，共 ${poolTotal} 家酒店`
+        : `共 ${DATA.hotels.length} 家酒店`;
     }
   }
   window.toggleListView = function(force){
@@ -1739,7 +1515,7 @@ function initBoard(){
     } else {
       cardsMain.style.display = '';
       listView.classList.remove('active');
-      document.getElementById('listViewBtn').textContent = '📋 房型列表';
+      document.getElementById('listViewBtn').textContent = '📋 酒店列表';
     }
   };
 
@@ -1752,15 +1528,15 @@ function initBoard(){
       if (!byPhrase.has(p)) byPhrase.set(p, {phrase:p, model:{}, manual:{}, total:0, catWrong:false});
       return byPhrase.get(p);
     }
-    DATA.rooms.forEach(room => {
-      const rs = getRoomState(room.id) || {};
+    DATA.hotels.forEach(hotel => {
+      const rs = getHotelState(hotel.id) || {};
       const deletedSet = new Set(rs.deletedTokenIdx || []);
-      room.tokens.forEach(t => {
+      hotel.tokens.forEach(t => {
         const e = ensure(t.phrase);
         const modelCat = displayCat(t);
         e.model[modelCat] = (e.model[modelCat]||0) + 1;
         e.total += 1;
-        const s = state[getKey(room.id, t.i)] || {};
+        const s = state[getKey(hotel.id, t.i)] || {};
         if (deletedSet.has(t.i)) {
           e.manual[SOFT_DELETED_LABEL] = (e.manual[SOFT_DELETED_LABEL]||0) + 1;
         } else if (s.mark === 'ok') {
@@ -1802,42 +1578,53 @@ function initBoard(){
   }
 
   function renderStatsView(){
-    // KPI numbers
+    // KPI：仅统计已验收分词 / 已验收酒店（随验收进度动态变化）
     let tokenTotal = 0, tokenCorrect = 0, tokenWrong = 0;
-    let roomTotal = DATA.rooms.length, roomCatAllOk = 0, roomCatAnyNg = 0;
+    let roomTotal = 0, roomCatAllOk = 0, roomCatAnyNg = 0;
     let roomPhraseWrong = 0, roomPhraseAllOk = 0;
-    DATA.rooms.forEach(room => {
-      const rs = getRoomState(room.id) || {};
+    DATA.hotels.forEach(hotel => {
+      const rs = getHotelState(hotel.id) || {};
       const deletedSet = new Set(rs.deletedTokenIdx || []);
-      let allReviewed = true;
-      room.tokens.forEach(t => {
-        tokenTotal += 1;
-        const s = state[getKey(room.id, t.i)] || {};
-        if (s.mark === 'ok') tokenCorrect += 1;
-        else if (s.mark === 'ng') tokenWrong += 1;
-        else if (!deletedSet.has(t.i)) allReviewed = false;
+
+      // 已验收分词：已打 ✓ / ✗
+      hotel.tokens.forEach(t => {
+        if (deletedSet.has(t.i)) return;
+        const s = state[getKey(hotel.id, t.i)] || {};
+        if (s.mark === 'ok') { tokenTotal += 1; tokenCorrect += 1; }
+        else if (s.mark === 'ng') { tokenTotal += 1; tokenWrong += 1; }
       });
-      // 房型维度：仅统计打标「分类有误」(mark==='ng') 的房型
-      const roomCatNg = room.tokens.some(t => (state[getKey(room.id, t.i)] || {}).mark === 'ng');
-      if (roomCatNg) roomCatAnyNg += 1;
+
+      // 已验收酒店：与工具栏「已完成」一致
+      if (!isHotelDone(hotel)) return;
+      roomTotal += 1;
+
+      // 分类（按酒店维度）有错 =
+      //   分词错误的酒店 + 分词准确但至少 1 条分词分类有误的酒店
+      const hasCatNg = hotel.tokens.some(t => {
+        if (deletedSet.has(t.i)) return false;
+        return (state[getKey(hotel.id, t.i)] || {}).mark === 'ng';
+      });
+      const roomClassWrong = !!rs.phraseWrong || hasCatNg;
+      if (roomClassWrong) roomCatAnyNg += 1;
       else roomCatAllOk += 1;
+
       if (rs.phraseWrong) roomPhraseWrong += 1;
-      else if (allReviewed) roomPhraseAllOk += 1;
+      else roomPhraseAllOk += 1;
     });
     const kpi = document.getElementById('kpiCards');
     function pct(a,b){ return b===0? '0%' : (Math.round(a/b*1000)/10) + '%'; }
     kpi.innerHTML = `
       <div class="kpi-card"><div class="kpi-title">分类（按分词维度）</div>
         <div class="kpi-main">${tokenWrong} <span class="kpi-pct">个错误</span></div>
-        <div class="kpi-sub">全对 / 总计：<b>${tokenCorrect}</b> / <b>${tokenTotal}</b> <span class="kpi-pct">${pct(tokenCorrect,tokenTotal)}</span></div>
+        <div class="kpi-sub">全对 / 已验收：<b>${tokenCorrect}</b> / <b>${tokenTotal}</b> <span class="kpi-pct">${pct(tokenCorrect,tokenTotal)}</span></div>
       </div>
-      <div class="kpi-card"><div class="kpi-title">分类（按房型维度）</div>
-        <div class="kpi-main">${roomCatAnyNg} <span class="kpi-pct">个房型有错</span></div>
-        <div class="kpi-sub">全对 / 总计：<b>${roomCatAllOk}</b> / <b>${roomTotal}</b> <span class="kpi-pct">${pct(roomCatAllOk,roomTotal)}</span></div>
+      <div class="kpi-card"><div class="kpi-title">分类（按酒店维度）</div>
+        <div class="kpi-main">${roomCatAnyNg} <span class="kpi-pct">家酒店有错</span></div>
+        <div class="kpi-sub">全对 / 已验收：<b>${roomCatAllOk}</b> / <b>${roomTotal}</b> <span class="kpi-pct">${pct(roomCatAllOk,roomTotal)}</span></div>
       </div>
-      <div class="kpi-card"><div class="kpi-title">分词（按房型维度）</div>
+      <div class="kpi-card"><div class="kpi-title">分词（按酒店维度）</div>
         <div class="kpi-main">${roomPhraseWrong} <span class="kpi-pct">个分词错</span></div>
-        <div class="kpi-sub">全对 / 总计：<b>${roomPhraseAllOk}</b> / <b>${roomTotal}</b> <span class="kpi-pct">${pct(roomPhraseAllOk,roomTotal)}</span></div>
+        <div class="kpi-sub">全对 / 已验收：<b>${roomPhraseAllOk}</b> / <b>${roomTotal}</b> <span class="kpi-pct">${pct(roomPhraseAllOk,roomTotal)}</span></div>
       </div>
     `;
 
@@ -1914,80 +1701,181 @@ function initBoard(){
   };
 
   window.exportXlsx = function(){
-    const rows = [];
-    DATA.rooms.forEach(room => {
-      const rs = getRoomState(room.id) || {};
-      const deletedSet = new Set(rs.deletedTokenIdx || []);
-      const newTokens = rs.newTokens || [];
-      const items = [];
-      room.tokens.forEach(t => {
-        const idx = room.name.indexOf(t.phrase);
-        items.push({type:'orig', t, deleted:deletedSet.has(t.i), pos: idx<0 ? Infinity : idx, ord: items.length});
+    if (!SOURCE_ROWS.length) { alert('无原始表数据，请重新导入 Excel'); return; }
+    const out = SOURCE_ROWS.map(r => (r ? r.slice() : []));
+    // ensure header row has G–L titles
+    if (out[0]) {
+      const hdr = out[0].slice();
+      while (hdr.length < 12) hdr.push(null);
+      const titles = {
+        [OUT_COL.phraseAcc]: '分词是否准确',
+        [OUT_COL.correctPhrases]: '正确分词',
+        [OUT_COL.phraseRemark]: '分词备注',
+        [OUT_COL.classAcc]: '分类是否准确',
+        [OUT_COL.correctClass]: '正确分类',
+        [OUT_COL.classRemark]: '分类备注',
+      };
+      Object.keys(titles).forEach(k => {
+        const i = Number(k);
+        if (!hdr[i]) hdr[i] = titles[i];
       });
-      newTokens.forEach((nt, i) => {
-        const phrase = nt.phrase || '';
-        const idx = phrase ? room.name.indexOf(phrase) : -1;
-        items.push({type:'new', nt, ntIdx:i, pos: (idx<0 || !phrase) ? Infinity : idx, ord: room.tokens.length + i});
+      out[0] = hdr;
+    }
+    DATA.hotels.forEach(hotel => {
+      const ri = hotel.sourceRowIndex;
+      if (ri == null || !out[ri]) return;
+      const row = out[ri];
+      while (row.length < 12) row.push(null);
+      const rs = getHotelState(hotel.id) || {};
+      const deleted = new Set(rs.deletedTokenIdx || []);
+      const allOrigDeleted = hotel.tokens.length > 0 && hotel.tokens.every(t => deleted.has(t.i));
+      const hasNg = hotel.tokens.some(t => {
+        if (deleted.has(t.i)) return false;
+        return (state[getKey(hotel.id, t.i)] || {}).mark === 'ng';
       });
-      items.sort((a,b)=>{
-        if (a.pos !== b.pos) return a.pos - b.pos;
-        return a.ord - b.ord;
+      const hasAnyMark = hotel.tokens.some(t => {
+        const m = (state[getKey(hotel.id, t.i)] || {}).mark;
+        return m === 'ok' || m === 'ng';
       });
-      const aggregatedRemark = (newTokens.map(nt => (nt.remark||'').trim()).filter(Boolean).join('; ')) || '';
-      items.forEach(item => {
-        if (item.type === 'orig') {
-          const t = item.t;
-          const s = state[getKey(room.id,t.i)] || {};
-          let phraseStatus = '';
-          if (item.deleted) phraseStatus = '错误（已删）';
-          rows.push({
-            '房型名称': room.name,
-            '分词': t.phrase,
-            '原分类': displayCat(t),
-            '是否正确': s.mark === 'ok' ? '正确' : (s.mark === 'ng' ? '错误' : ''),
-            '建议正确分类': s.suggested || '',
-            '备注': s.remark || '',
-            '是否缺陷': t.defect ? '是' : '',
-            '缺陷类型': t.defectType || '',
-            '分词是否正确': phraseStatus,
-            '分词问题备注': aggregatedRemark,
-          });
-        } else {
-          const nt = item.nt;
-          rows.push({
-            '房型名称': room.name,
-            '分词': nt.phrase || '',
-            '原分类': nt.category || '',
-            '是否正确': '',
-            '建议正确分类': '',
-            '备注': nt.remark || '',
-            '是否缺陷': '',
-            '缺陷类型': '',
-            '分词是否正确': ADDED_TOKEN_LABEL,
-            '分词问题备注': aggregatedRemark,
-          });
-        }
+      const annotated = !!rs.phraseWrong || hasAnyMark || !!(rs.newTokens && rs.newTokens.length) || deleted.size > 0;
+
+      // 未标注：G–L 全部留空
+      if (!annotated) {
+        row[OUT_COL.phraseAcc] = '';
+        row[OUT_COL.correctPhrases] = '';
+        row[OUT_COL.phraseRemark] = '';
+        row[OUT_COL.classAcc] = '';
+        row[OUT_COL.correctClass] = '';
+        row[OUT_COL.classRemark] = '';
+        return;
+      }
+
+      // 分词有误，或原分词全部软删除 → 分词记为否
+      const phraseWrong = !!rs.phraseWrong || allOrigDeleted;
+
+      // G 分词是否准确
+      row[OUT_COL.phraseAcc] = phraseWrong ? '否' : '是';
+      // H 正确分词（仅分词错时，segmentation_result 格式）
+      if (phraseWrong) {
+        const phrases = buildCorrectPhrases(hotel, rs);
+        row[OUT_COL.correctPhrases] = wrapSegmentationResult(phrases);
+      } else {
+        row[OUT_COL.correctPhrases] = '';
+      }
+      // I 分词备注
+      row[OUT_COL.phraseRemark] = (rs.phraseRemark || '').trim();
+
+      // J：分词有误 / 原分词全删 → 分类默认也有问题
+      const classWrong = phraseWrong || hasNg;
+      row[OUT_COL.classAcc] = classWrong ? '否' : '是';
+      // K：有错时写完整 ext；原分词全删时只用新增分词
+      if (classWrong) {
+        const correctClass = allOrigDeleted
+          ? buildCorrectClassFromNewTokens(hotel, rs)
+          : buildCorrectClassItems(hotel, rs);
+        row[OUT_COL.correctClass] = wrapExtResult(correctClass);
+      } else {
+        row[OUT_COL.correctClass] = '';
+      }
+      // L 分类备注（多分词合并）
+      const ngParts = [];
+      hotel.tokens.forEach(t => {
+        if (deleted.has(t.i)) return;
+        const s = state[getKey(hotel.id, t.i)] || {};
+        if (s.mark === 'ng' && s.remark) ngParts.push(`${t.phrase}: ${s.remark}`);
       });
+      (rs.newTokens || []).forEach(nt => {
+        if (nt.remark && String(nt.remark).trim()) ngParts.push(`${nt.phrase || '新增'}: ${nt.remark}`);
+      });
+      row[OUT_COL.classRemark] = ngParts.join('; ');
     });
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{wch:24},{wch:14},{wch:14},{wch:10},{wch:14},{wch:24},{wch:8},{wch:12},{wch:14},{wch:30}];
+    const ws = XLSX.utils.aoa_to_sheet(out);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, '验收结果');
-    const catWrongRows = getCatWrongExportRows();
-    const wsCatWrong = XLSX.utils.json_to_sheet(catWrongRows.length ? catWrongRows : [{'分词':'','人工验收分类':''}]);
-    wsCatWrong['!cols'] = [{wch:20},{wch:24}];
-    XLSX.utils.book_append_sheet(wb, wsCatWrong, '分类错误');
-    XLSX.writeFile(wb, `房型分词验收_${timestampSlug()}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, DATA.sheetName || '验收结果');
+    XLSX.writeFile(wb, `酒店名称分词验收_${timestampSlug()}.xlsx`);
   };
+
+  function phrasePos(enName, phrase){
+    if (!phrase) return 99999;
+    const idx = enName.toLowerCase().indexOf(phrase.toLowerCase());
+    return idx < 0 ? 99999 : idx;
+  }
+
+  function buildCorrectPhrases(hotel, rs){
+    const deleted = new Set(rs.deletedTokenIdx || []);
+    const parts = [];
+    hotel.tokens.forEach(t => {
+      if (!deleted.has(t.i) && t.phrase) parts.push({ phrase: t.phrase, pos: phrasePos(hotel.enName, t.phrase) });
+    });
+    (rs.newTokens || []).forEach(nt => {
+      if (nt.phrase) parts.push({ phrase: nt.phrase, pos: phrasePos(hotel.enName, nt.phrase) });
+    });
+    parts.sort((a,b) => a.pos - b.pos);
+    return parts.map(p => p.phrase);
+  }
+
+  function buildCorrectClassItems(hotel, rs){
+    const deleted = new Set(rs.deletedTokenIdx || []);
+    const parts = [];
+    hotel.tokens.forEach(t => {
+      if (deleted.has(t.i) || !t.phrase) return;
+      const s = state[getKey(hotel.id, t.i)] || {};
+      let category = t.category;
+      let subCategory = t.subCategory || '';
+      if (s.mark === 'ng' && s.suggested) {
+        const sug = parseSuggestedCat(s.suggested);
+        category = sug.category || category;
+        subCategory = sug.subCategory || '';
+      }
+      const item = { token: t.phrase, category: category || UNCATEGORIZED };
+      if (subCategory) item.subCategory = subCategory;
+      if (t.elements) item.elements = t.elements;
+      parts.push({ item, pos: phrasePos(hotel.enName, t.phrase) });
+    });
+    (rs.newTokens || []).forEach(nt => {
+      if (!nt.phrase) return;
+      parts.push({ item: newTokenToClassItem(nt), pos: phrasePos(hotel.enName, nt.phrase) });
+    });
+    parts.sort((a,b) => a.pos - b.pos);
+    return parts.map(p => p.item);
+  }
+
+  /** 原分词全部软删除时：K 列仅用新增分词 */
+  function buildCorrectClassFromNewTokens(hotel, rs){
+    const parts = [];
+    (rs.newTokens || []).forEach(nt => {
+      if (!nt.phrase) return;
+      parts.push({ item: newTokenToClassItem(nt), pos: phrasePos(hotel.enName, nt.phrase) });
+    });
+    parts.sort((a,b) => a.pos - b.pos);
+    return parts.map(p => p.item);
+  }
+
+  function newTokenToClassItem(nt){
+    const sug = parseSuggestedCat(nt.category || '');
+    const item = { token: nt.phrase, category: sug.category || UNCATEGORIZED };
+    if (sug.subCategory) item.subCategory = sug.subCategory;
+    return item;
+  }
+
+  function parseSuggestedCat(s){
+    if (!s) return { category: '', subCategory: '' };
+    const i = s.indexOf(' / ');
+    if (i >= 0) return { category: s.slice(0, i).trim(), subCategory: s.slice(i + 3).trim() };
+    return { category: s.trim(), subCategory: '' };
+  }
   window.exportHtml = function(){
     const payload = {
       generatedAt: DATA.generatedAt,
-      rooms: DATA.rooms,
+      hotels: DATA.hotels,
       payloadHash: DATA.payloadHash,
-      taxonomy: TAXO_BY_CAT,
-      defectByCat: DEFECT_BY_CAT,
+      sheetName: DATA.sheetName,
+      sourceHeaders: DATA.sourceHeaders,
+      sourceRows: SOURCE_ROWS,
+      categoryOpts: DATA.categoryOpts,
     };
-    downloadSnapshotHtml(buildSnapshotHtmlString(payload, state), `房型分词验收_快照_${timestampSlug()}.html`);
+    localStorage.setItem(TAXO_KEY, JSON.stringify({ categoryOpts: CATEGORY_OPTS, sourceHeaders: SOURCE_HEADERS, sourceRows: SOURCE_ROWS }));
+    downloadSnapshotHtml(buildSnapshotHtmlString(payload, state), `酒店名称分词验收_快照_${timestampSlug()}.html`);
   };
 
   renderAll();
@@ -2002,10 +1890,12 @@ function buildSnapshotHtmlString(dataPayload, statePayload){
   if (dataNode) {
     dataNode.textContent = JSON.stringify({
       generatedAt: dataPayload.generatedAt,
-      rooms: dataPayload.rooms,
+      hotels: dataPayload.hotels,
       payloadHash: dataPayload.payloadHash,
-      taxonomy: dataPayload.taxonomy || {},
-      defectByCat: dataPayload.defectByCat || {},
+      categoryOpts: dataPayload.categoryOpts || [],
+      sheetName: dataPayload.sheetName || '',
+      sourceHeaders: dataPayload.sourceHeaders || [],
+      sourceRows: dataPayload.sourceRows || [],
     });
   }
   const snap = docEl.querySelector('#__STATE_SNAPSHOT__');
