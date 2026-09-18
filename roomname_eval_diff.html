@@ -140,21 +140,6 @@ table.data-table tr.clickable:hover { background:#eff6ff; }
   <div class="kpis" id="kpiCards"></div>
 
   <div class="section-block">
-    <h3>分词错误样本 <span class="count-hint" id="segCount"></span></h3>
-    <div class="hint">分词结果序列与标答不同（优先于分类错误）</div>
-    <div id="segTableWrap"></div>
-  </div>
-  <div class="section-block">
-    <h3>分类错误样本 <span class="count-hint" id="clsCount"></span></h3>
-    <div class="hint">分词相同但类别/缺陷字段不同</div>
-    <div id="clsTableWrap"></div>
-  </div>
-  <div class="section-block">
-    <h3>错误分词 Top</h3>
-    <div class="hint">分词错误样本中未对齐的 token；点击筛出相关样本</div>
-    <div id="segTopWrap"></div>
-  </div>
-  <div class="section-block">
     <h3>错误分类 Top</h3>
     <div class="hint">分类错误样本中类别不一致的 token；点击筛出相关样本</div>
     <div id="clsTopWrap"></div>
@@ -349,20 +334,6 @@ function getFilteredSamples() {
   });
 }
 
-function sampleMiniTable(samples) {
-  if (!samples.length) return '<div class="empty-tip">无</div>';
-  const rows = samples.slice(0, 200).map(s => `
-    <tr class="clickable" data-id="${s.id}">
-      <td>${s.id + 1}</td>
-      <td>${escapeHtml(s.hotel_id)}</td>
-      <td>${escapeHtml(s.room_name)}</td>
-      <td><span class="pill diff">${escapeHtml(s.difficulty || '-')}</span></td>
-      <td>${s.modified ? '<span class="pill mod">已改</span>' : '-'}</td>
-    </tr>`).join('');
-  const more = samples.length > 200 ? `<div class="count-hint" style="margin-top:8px;">仅显示前 200 条，共 ${samples.length} 条</div>` : '';
-  return `<table class="data-table"><thead><tr><th>#</th><th>hotel_id</th><th>room_name</th><th>difficulty</th><th>标答</th></tr></thead><tbody>${rows}</tbody></table>${more}`;
-}
-
 function renderStats() {
   const k = C.computeKpis(state.samples);
   const cards = [
@@ -380,22 +351,7 @@ function renderStats() {
     </div>`;
   }).join('');
 
-  const segs = state.samples.filter(s => s.errorType === 'seg');
-  const clss = state.samples.filter(s => s.errorType === 'cls');
-  document.getElementById('segCount').textContent = `（${segs.length}）`;
-  document.getElementById('clsCount').textContent = `（${clss.length}）`;
-  document.getElementById('segTableWrap').innerHTML = sampleMiniTable(segs);
-  document.getElementById('clsTableWrap').innerHTML = sampleMiniTable(clss);
-
-  const segTop = C.aggregateSegTop(state.samples);
   const clsTop = C.aggregateClsTop(state.samples);
-  document.getElementById('segTopWrap').innerHTML = segTop.length ? `
-    <table class="data-table"><thead><tr><th>分词</th><th>次数</th><th>样本数</th></tr></thead>
-    <tbody>${segTop.slice(0, 50).map(r => `
-      <tr class="clickable" data-top-seg="${escapeHtml(r.phrase)}" data-ids="${r.sampleIds.join(',')}">
-        <td>${escapeHtml(displayPhrase(r.phrase))}</td><td>${r.count}</td><td>${r.sampleIds.length}</td>
-      </tr>`).join('')}</tbody></table>` : '<div class="empty-tip">无</div>';
-
   document.getElementById('clsTopWrap').innerHTML = clsTop.length ? `
     <table class="data-table"><thead><tr><th>分词</th><th>标答类别(C)</th><th>模型类别(G)</th><th>次数</th><th>样本数</th></tr></thead>
     <tbody>${clsTop.slice(0, 50).map(r => `
@@ -407,12 +363,10 @@ function renderStats() {
       </tr>`).join('')}</tbody></table>` : '<div class="empty-tip">无</div>';
 
   document.getElementById('statsView').onclick = (e) => {
-    const tr = e.target.closest('tr[data-id]');
-    if (tr) { openCard(+tr.getAttribute('data-id')); return; }
     const top = e.target.closest('tr[data-ids]');
     if (top) {
       const ids = new Set(top.getAttribute('data-ids').split(',').map(Number));
-      state.filters.status = top.hasAttribute('data-top-seg') ? 'seg' : 'cls';
+      state.filters.status = 'cls';
       state._idRestrict = ids;
       showView('list');
     }
