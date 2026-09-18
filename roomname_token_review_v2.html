@@ -1,0 +1,2514 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>房型分词分类验收（roomname/result）</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root { --bg:#f6f7fb; --card:#fff; --muted:#6b7280; --border:#e5e7eb; --primary:#2563eb; --ok:#16a34a; --ng:#dc2626; --warn:#d97706; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif; color:#111827; }
+  header.toolbar { position:sticky; top:0; z-index:50; background:#fff; border-bottom:1px solid var(--border); padding:10px 16px; display:flex; flex-wrap:wrap; gap:10px; align-items:center; box-shadow:0 1px 2px rgba(0,0,0,.04); }
+  header h1 { margin:0 12px 0 0; font-size:16px; font-weight:600; }
+  .stat { font-size:13px; color:var(--muted); }
+  .stat b { color:#111827; }
+  .grow { flex:1; }
+  .toolbar input[type=text] { padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px; width:200px; }
+  .toolbar-left { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .toolbar-right { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-left:auto; }
+  .btn { padding:6px 12px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; font-size:13px; }
+  a.btn { text-decoration:none; color:inherit; display:inline-block; white-space:nowrap; }
+  .btn:hover, a.btn:hover { background:#f3f4f6; }
+  .toolbar button { padding:6px 12px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; font-size:13px; }
+  .toolbar button.primary { background:var(--primary); color:#fff; border-color:var(--primary); }
+  .toolbar button:hover { background:#f3f4f6; }
+  .toolbar button.primary:hover { background:#1d4ed8; }
+  .nav { display:inline-flex; align-items:center; gap:6px; }
+  .nav button { width:32px; padding:6px 0; }
+  .nav .progress { font-size:13px; font-weight:600; color:#111827; min-width:90px; text-align:center; }
+
+  main { padding:24px 16px 60px; max-width:920px; margin:0 auto; }
+  .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:28px 32px 32px; box-shadow:0 4px 16px rgba(0,0,0,.04); }
+  .card.hidden { display:none; }
+  .room-title { position:sticky; top:var(--toolbar-h, 56px); z-index:40; background:#fff; text-align:center; font-size:30px; font-weight:700; line-height:1.4; margin:-28px -32px 20px; padding:16px 32px 14px; letter-spacing:1px; border-bottom:1px solid var(--border); border-radius:14px 14px 0 0; }
+  .room-title .seg { padding:4px 4px; border-radius:6px; }
+  .room-meta { text-align:center; font-size:12px; color:var(--muted); margin-bottom:20px; line-height:1.7; }
+  .room-meta a { color:var(--primary); text-decoration:none; font-weight:600; }
+  .room-meta a:hover { text-decoration:underline; }
+  .room-meta .meta-sep { margin:0 6px; color:#d1d5db; }
+
+  .room-flag { background:#fef9c3; border:1px solid #fde68a; border-left:4px solid #d97706; border-radius:8px; padding:10px 14px; margin-bottom:16px; display:flex; flex-direction:column; gap:8px; }
+  .room-flag label.toggle { display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:600; font-size:14px; color:#92400e; }
+  .room-flag label.toggle input { width:18px; height:18px; cursor:pointer; accent-color:#d97706; }
+  .room-flag .remark-wrap { display:none; }
+  .room-flag.on .remark-wrap { display:block; }
+  .room-flag textarea { width:100%; min-height:48px; font-size:13px; padding:6px 10px; border:1px solid #fde68a; border-radius:6px; font-family:inherit; resize:vertical; background:#fffbeb; }
+
+  .new-token-area { display:none; margin-bottom:12px; }
+  .new-token-area .nta-title { font-size:13px; font-weight:600; color:#374151; margin-bottom:8px; }
+  .new-token-area .empty-tip { color:#6b7280; font-size:12px; padding:6px 0 8px; }
+  .new-token-area .add-nt-btn { margin-top:8px; padding:8px 14px; font-size:13px; border:1px dashed #9ca3af; background:#fff; color:#374151; border-radius:6px; cursor:pointer; font-weight:600; }
+  .new-token-area .add-nt-btn:hover { background:#f3f4f6; border-color:#6b7280; }
+  .token-row.new input.new-phrase { font-size:18px; font-weight:600; padding:5px 8px; border:1px solid #d1d5db; border-radius:5px; min-width:90px; max-width:160px; background:#fff; }
+  .token-row.new select.new-cat { font-size:13px; padding:5px 8px; border:1px solid #d1d5db; border-radius:5px; min-width:140px; background:#fff; }
+  .token-row.new .badge-color { display:inline-block; width:14px; height:14px; border-radius:3px; vertical-align:middle; }
+  .token-row.new .info-btn { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:#e5e7eb; color:#4b5563; font-style:italic; font-size:12px; font-weight:700; cursor:pointer; border:none; }
+  .token-row.new .info-btn:hover { background:#d1d5db; }
+  .token-row.new textarea.new-remark { flex:1; min-width:160px; min-height:30px; font-size:12px; padding:5px 8px; border:1px solid #d1d5db; border-radius:5px; font-family:inherit; resize:vertical; background:#fff; }
+  .token-row.new .nt-remove { width:30px; height:30px; border:1px solid #fca5a5; background:#fef2f2; color:#dc2626; border-radius:5px; cursor:pointer; font-weight:700; font-size:14px; padding:0; }
+  .token-row.new .nt-remove:hover { background:#fee2e2; }
+
+  .token-row .del-btn { width:30px; height:30px; border:1px solid var(--border); background:#fff; border-radius:5px; cursor:pointer; font-size:14px; padding:0; }
+  .token-row .del-btn:hover { background:#fee2e2; border-color:#fca5a5; }
+  .token-row.deleted { opacity:.5; }
+  .token-row.deleted .phrase, .token-row.deleted .badge { text-decoration:line-through; }
+  .token-row.deleted .mark button { pointer-events:none; opacity:.4; }
+  .token-row.deleted .del-btn { background:#fef3c7; border-color:#fcd34d; color:#92400e; }
+  .token-row .deleted-tag { display:none; padding:2px 6px; font-size:11px; border-radius:3px; background:#9ca3af; color:#fff; }
+  .token-row.deleted .deleted-tag { display:inline-block; }
+  .card.phrase-wrong { box-shadow:0 0 0 2px #fcd34d, 0 4px 16px rgba(0,0,0,.04); }
+  .card .pw-corner { display:none; position:absolute; top:14px; right:18px; padding:3px 9px; font-size:11px; font-weight:700; border-radius:4px; background:#d97706; color:#fff; letter-spacing:.5px; }
+  .card.phrase-wrong .pw-corner { display:inline-block; }
+  .card { position:relative; }
+
+  .token-list { display:flex; flex-direction:column; gap:12px; }
+  .token-row { display:flex; align-items:center; gap:14px; padding:12px 14px; border:1px solid var(--border); border-radius:10px; background:#fafafa; flex-wrap:wrap; transition:background .15s; }
+  .token-row:hover { background:#f3f4f6; }
+  .token-row.ok { border-color:#86efac; background:#f0fdf4; }
+  .token-row.ng { border-color:#fca5a5; background:#fef2f2; }
+  .token-row .phrase { font-size:18px; font-weight:600; min-width:80px; }
+  .token-row .badge { font-size:13px; padding:4px 10px; border-radius:6px; color:#fff; display:inline-flex; align-items:center; gap:8px; }
+  .token-row .badge .info { display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background:rgba(255,255,255,.3); font-style:italic; font-size:12px; font-weight:700; cursor:pointer; transition:all .15s; }
+  .token-row .badge .info:hover { background:rgba(255,255,255,.65); box-shadow:0 0 0 2px rgba(255,255,255,.4); }
+  .token-row .grow { flex:1; }
+  .token-row .mark { display:inline-flex; gap:4px; }
+  .token-row .mark button { width:32px; height:30px; border:1px solid var(--border); background:#fff; border-radius:6px; cursor:pointer; font-size:14px; padding:0; font-weight:700; }
+  .token-row .mark button.ok-btn:hover { border-color:var(--ok); color:var(--ok); }
+  .token-row .mark button.ng-btn:hover { border-color:var(--ng); color:var(--ng); }
+  .token-row .mark button.ok-btn.active { background:var(--ok); color:#fff; border-color:var(--ok); }
+  .token-row .mark button.ng-btn.active { background:var(--ng); color:#fff; border-color:var(--ng); }
+  .token-row .detail { width:100%; margin-top:6px; padding:10px 12px; border:1px dashed #fca5a5; border-radius:8px; background:#fff; display:none; flex-wrap:wrap; gap:10px; align-items:center; }
+  .token-row.ng .detail { display:flex; }
+  .token-row .detail label { font-size:12px; color:var(--muted); display:inline-flex; align-items:center; gap:6px; }
+  .token-row .detail select, .token-row .detail textarea { font-size:13px; padding:5px 8px; border:1px solid var(--border); border-radius:5px; font-family:inherit; }
+  .token-row .detail select { min-width:170px; }
+  .token-row .detail textarea { flex:1; min-width:240px; min-height:28px; resize:vertical; }
+
+  /* searchable combobox */
+  .combo { position:relative; display:inline-flex; }
+  .combo input { font-size:13px; padding:5px 8px; border:1px solid var(--border); border-radius:5px; font-family:inherit; width:200px; background:#fff; }
+  .combo input:focus { outline:none; border-color:var(--primary); }
+  .combo .menu { position:absolute; top:100%; left:0; margin-top:2px; background:#fff; border:1px solid var(--border); border-radius:6px; box-shadow:0 6px 20px rgba(0,0,0,.12); max-height:240px; overflow-y:auto; min-width:220px; z-index:60; display:none; }
+  .combo.open .menu { display:block; }
+  .combo .menu-item { padding:6px 10px; font-size:13px; cursor:pointer; white-space:nowrap; }
+  .combo .menu-item:hover, .combo .menu-item.active { background:#eff6ff; color:var(--primary); }
+  .combo .menu-item .hl { background:#fef08a; }
+  .combo .menu-empty { padding:10px; font-size:12px; color:var(--muted); text-align:center; }
+  .defect-flag { display:inline-block; padding:2px 6px; font-size:11px; border-radius:4px; background:var(--warn); color:#fff; }
+
+  .all-done { text-align:center; padding:40px; font-size:18px; color:var(--ok); font-weight:600; }
+
+  /* List view (overview) */
+  #listView { display:none; padding:24px 16px 60px; max-width:1100px; margin:0 auto; }
+  #listView.active { display:block; }
+  #listView h2 { margin:0 0 12px 0; font-size:18px; font-weight:600; }
+  #listView .list-toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:14px; }
+  #listView .list-toolbar .count-hint { font-size:12px; color:var(--muted); margin-right:8px; }
+  #listView .filter-pill { padding:5px 12px; font-size:12.5px; border:1px solid var(--border); background:#fff; border-radius:18px; cursor:pointer; color:#374151; }
+  #listView .filter-pill.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+  #listView .filter-pill .small { font-size:11px; opacity:.85; margin-left:4px; }
+  #listView .list-grid { display:grid; grid-template-columns:1fr; gap:10px; }
+  @media (min-width:900px){ #listView .list-grid { grid-template-columns:1fr 1fr; } }
+  .list-item { display:flex; align-items:center; gap:14px; padding:10px 14px; background:#fff; border:1px solid var(--border); border-radius:8px; cursor:pointer; transition:all .15s; }
+  .list-item:hover { background:#eff6ff; border-color:#93c5fd; transform:translateX(2px); }
+  .list-item .idx { width:32px; flex:none; font-size:12px; color:var(--muted); font-weight:600; text-align:right; }
+  .list-item .name { flex:1; font-size:15px; font-weight:500; line-height:1.4; }
+  .list-item .name .seg { padding:2px 3px; border-radius:4px; }
+  .list-item .badges { flex:none; display:flex; gap:4px; align-items:center; }
+  .list-item .pill { font-size:11px; padding:2px 7px; border-radius:10px; font-weight:600; }
+  .list-item .pill.todo { background:#f3f4f6; color:#6b7280; }
+  .list-item .pill.done { background:#dcfce7; color:#166534; }
+  .list-item .pill.ng { background:#fee2e2; color:#991b1b; }
+  .list-item .pill.pw { background:#fef3c7; color:#92400e; }
+  .list-item.current { box-shadow:0 0 0 2px var(--primary); }
+
+  /* Import wizard */
+  #importWizard { padding:48px 16px 60px; max-width:1100px; margin:0 auto; }
+  #importWizard .page-home-bar { margin:0 0 16px; }
+  #importWizard .landing-title { text-align:center; font-size:22px; font-weight:700; margin:0 0 20px; }
+  #importWizard .landing-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; }
+  @media (max-width:900px){ #importWizard .landing-grid { grid-template-columns:1fr; } }
+  #importWizard .wizard-col .col-heading { font-size:16px; font-weight:600; margin:0 0 4px; }
+  #importWizard .wizard-col .subtitle { text-align:left; color:var(--muted); font-size:13px; margin-bottom:16px; }
+  #importWizard .merge-file-list { margin:10px 0 12px; }
+  #importWizard .merge-file-item { padding:8px 12px; background:#fff; border:1px solid var(--border); border-radius:6px; font-size:12.5px; margin-bottom:6px; line-height:1.5; }
+  #importWizard .merge-file-item.ok { border-color:#86efac; color:#065f46; }
+  #importWizard .merge-file-item.err { border-color:#fca5a5; background:#fef2f2; color:#991b1b; }
+  #importWizard .merge-dup-panel { display:none; margin:12px 0; padding:12px 14px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; }
+  #importWizard .merge-dup-panel.visible { display:block; }
+  #importWizard .merge-dup-panel h4 { margin:0 0 10px; font-size:13px; font-weight:600; color:#92400e; }
+  #importWizard .dup-group { margin-bottom:10px; }
+  #importWizard .dup-group h5 { margin:0 0 6px; font-size:12.5px; font-weight:600; color:#374151; }
+  #importWizard .dup-row { display:flex; align-items:center; gap:8px; padding:4px 0; font-size:12.5px; }
+  #importWizard .dup-row label { display:flex; align-items:center; gap:8px; cursor:pointer; flex:1; }
+  #importWizard .dup-row .pill-done { font-size:11px; padding:2px 6px; border-radius:4px; background:#dcfce7; color:#166534; }
+  #importWizard .dup-row .pill-todo { font-size:11px; padding:2px 6px; border-radius:4px; background:#f3f4f6; color:#6b7280; }
+  #importWizard #mergeErr .err { padding:8px 12px; background:#fef2f2; border:1px solid #fca5a5; border-radius:6px; color:#991b1b; font-size:12.5px; margin-top:8px; white-space:pre-wrap; }
+  #importWizard .step { background:#fff; border:1px solid var(--border); border-radius:12px; padding:20px 22px; margin-bottom:14px; }
+  #importWizard .step.current { border-color:var(--primary); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+  #importWizard .step.done { border-color:#86efac; background:#f0fdf4; }
+  #importWizard .step.locked { opacity:.55; pointer-events:none; }
+  #importWizard .step h3 { margin:0 0 12px; font-size:15px; font-weight:600; display:flex; align-items:center; gap:8px; }
+  #importWizard .step h3 .num { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:#e5e7eb; color:#374151; font-size:12px; font-weight:700; }
+  #importWizard .step.current h3 .num { background:var(--primary); color:#fff; }
+  #importWizard .step.done h3 .num { background:#16a34a; color:#fff; }
+  #importWizard .step.done h3 .num::before { content:'✓'; }
+  #importWizard .step.done h3 .num span { display:none; }
+  #importWizard .step .req { font-size:12px; color:var(--muted); line-height:1.6; padding:8px 10px; background:#f9fafb; border-radius:6px; margin-bottom:10px; }
+  #importWizard .step .req code { font-family:inherit; color:#1f2937; background:#fef3c7; padding:1px 4px; border-radius:3px; font-size:11.5px; }
+  #importWizard .step .upload-btn { display:inline-block; width:100%; padding:11px 14px; font-size:14px; font-weight:600; background:var(--primary); color:#fff; border:none; border-radius:6px; cursor:pointer; text-align:center; }
+  #importWizard .step .upload-btn:hover { background:#1d4ed8; }
+  #importWizard .step .upload-btn.disabled { background:#cbd5e1; cursor:not-allowed; pointer-events:none; }
+  #importWizard .step .file-info { padding:10px 12px; background:#fff; border:1px solid #86efac; border-radius:6px; font-size:12.5px; color:#065f46; line-height:1.6; }
+  #importWizard .step .file-info b { color:#111827; }
+  #importWizard .step .err { padding:8px 12px; background:#fef2f2; border:1px solid #fca5a5; border-radius:6px; color:#991b1b; font-size:12.5px; margin-top:8px; white-space:pre-wrap; }
+  #importWizard .step .reupload { font-size:12px; color:var(--primary); cursor:pointer; text-decoration:underline; margin-left:8px; background:none; border:none; padding:0; }
+  #importWizard .continue-btn { width:100%; padding:12px; font-size:15px; font-weight:600; background:var(--primary); color:#fff; border:none; border-radius:8px; cursor:pointer; margin-top:8px; }
+  #importWizard .continue-btn:disabled { background:#cbd5e1; cursor:not-allowed; }
+  #importWizard .continue-btn:hover:not(:disabled) { background:#1d4ed8; }
+
+  /* Stats view */
+  #statsView { display:none; padding:24px 16px 60px; max-width:1100px; margin:0 auto; }
+  #statsView.active { display:block; }
+  #statsView h2 { margin:0 0 16px 0; font-size:18px; font-weight:600; }
+  #statsView .kpis { display:grid; grid-template-columns:1fr; gap:12px; margin-bottom:24px; }
+  @media (min-width:900px){ #statsView .kpis { grid-template-columns:repeat(3,1fr); } }
+  .kpi-card { background:#fff; border:1px solid var(--border); border-radius:10px; padding:16px 18px; }
+  .kpi-card .kpi-title { font-size:12px; color:var(--muted); margin-bottom:6px; }
+  .kpi-card .kpi-main { font-size:24px; font-weight:700; color:#dc2626; }
+  .kpi-card .kpi-main.ok { color:#16a34a; }
+  .kpi-card .kpi-sub { font-size:12.5px; color:#374151; margin-top:6px; }
+  .kpi-card .kpi-pct { font-size:11px; color:var(--muted); margin-left:6px; }
+
+  #statsView .stats-toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px; }
+  #statsView .stats-toolbar .count-hint { font-size:12px; color:var(--muted); margin-right:8px; }
+  #statsView .filter-pill { padding:5px 12px; font-size:12.5px; border:1px solid var(--border); background:#fff; border-radius:18px; cursor:pointer; color:#374151; }
+  #statsView .filter-pill.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+  #statsView .filter-pill .small { font-size:11px; opacity:.85; margin-left:4px; }
+
+  table.stats-table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--border); border-radius:10px; overflow:hidden; font-size:13px; }
+  table.stats-table th { text-align:left; padding:10px 12px; background:#f9fafb; font-weight:600; color:#374151; border-bottom:1px solid var(--border); }
+  table.stats-table td { padding:10px 12px; border-bottom:1px solid #f3f4f6; vertical-align:top; }
+  table.stats-table tr:last-child td { border-bottom:none; }
+  table.stats-table .phrase-cell { font-weight:600; font-size:14px; }
+  table.stats-table .cat-tag { display:inline-block; padding:2px 7px; margin:2px 3px 2px 0; font-size:11.5px; color:#fff; border-radius:4px; }
+  table.stats-table .cat-tag.deleted { background:#9ca3af; }
+  table.stats-table .cat-tag.added { background:#059669; }
+  #statsView .danger-zone { margin-top:32px; padding:14px; background:#fef2f2; border:1px solid #fca5a5; border-radius:8px; }
+  #statsView .danger-zone button { padding:6px 12px; font-size:12.5px; border:1px solid #dc2626; background:#fff; color:#dc2626; border-radius:6px; cursor:pointer; }
+  #statsView .danger-zone button:hover { background:#fee2e2; }
+
+  /* tooltip popover (click only) — viewport-safe on small screens */
+  #tip { position:fixed; z-index:1000; box-sizing:border-box; width:min(480px, calc(100vw - 16px)); max-width:calc(100vw - 16px); min-width:0; max-height:calc(100vh - 16px); overflow:hidden; display:none; flex-direction:column; background:#1f2937; color:#f9fafb; border-radius:10px; padding:14px 16px; font-size:13px; line-height:1.6; box-shadow:0 8px 28px rgba(0,0,0,.22); }
+  #tip.is-open { display:flex; }
+  #tip h4 { margin:0 0 4px 0; font-size:15px; color:#fff; flex:none; }
+  #tip .breadcrumb { color:#9ca3af; font-size:11.5px; margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #374151; flex:none; }
+  #tip .tip-tabs { display:flex; gap:4px; margin:10px 0 0; border-bottom:1px solid #374151; flex:none; }
+  #tip .tip-tab { flex:1; padding:7px 8px; font-size:12.5px; font-weight:600; color:#9ca3af; background:transparent; border:none; border-bottom:2px solid transparent; cursor:pointer; margin-bottom:-1px; }
+  #tip .tip-tab:hover { color:#e5e7eb; }
+  #tip .tip-tab.active { color:#fff; border-bottom-color:#60a5fa; }
+  #tip .tip-panels { flex:1 1 auto; min-height:0; max-height:none; overflow-y:auto; margin-top:4px; padding-right:2px; -webkit-overflow-scrolling:touch; }
+  #tip .tip-panel { display:none; }
+  #tip .tip-panel.active { display:block; }
+  #tip .block { margin-top:12px; }
+  #tip .block:first-of-type { margin-top:8px; }
+  #tip .block .lbl { font-weight:700; font-size:12.5px; margin-bottom:4px; letter-spacing:.5px; }
+  #tip .block.def .lbl { color:#fbbf24; }
+  #tip .block.ex  .lbl { color:#34d399; }
+  #tip .block.rule .lbl { color:#c084fc; }
+  #tip .block.tag .lbl { color:#f9a8d4; }
+  #tip .block.allow .lbl { color:#60a5fa; }
+  #tip .block.allow.no .lbl { color:#f87171; }
+  #tip .block.subs .lbl { color:#c084fc; }
+  #tip .block .body { color:#e5e7eb; white-space:pre-wrap; word-break:break-word; }
+  #tip .tip-empty { color:#9ca3af; font-size:12.5px; padding:14px 4px; }
+  #tip .rules-count { font-size:12px; color:#9ca3af; margin:8px 0 2px; }
+  #tip .rule-pills { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 4px; }
+  #tip .rule-pill { padding:4px 10px; font-size:12px; font-weight:600; color:#9ca3af; background:#111827; border:1px solid #4b5563; border-radius:999px; cursor:pointer; }
+  #tip .rule-pill:hover { color:#e5e7eb; border-color:#9ca3af; }
+  #tip .rule-pill.active { color:#fff; background:#1d4ed8; border-color:#3b82f6; }
+  #tip .rule-card { margin-top:8px; padding:10px 12px; background:#111827; border:1px solid #374151; border-radius:8px; }
+  #tip .rule-card .block { margin-top:8px; }
+  #tip .rule-card .block:first-of-type { margin-top:0; }
+  #tip .rule-pane { display:none; }
+  #tip .rule-pane.active { display:block; }
+  #tip .sub { margin:6px 0; padding:6px 8px; background:#374151; border-radius:6px; }
+  #tip .sub b { color:#fde68a; }
+  #tip details { margin-top:6px; }
+  #tip details summary { cursor:pointer; color:#c084fc; }
+  .empty-tip { padding:30px; text-align:center; color:var(--muted); }
+  #importWizard .step .skip-btn { display:inline-block; margin-left:10px; padding:8px 12px; font-size:13px; font-weight:600; background:#fff; color:#374151; border:1px solid var(--border); border-radius:6px; cursor:pointer; }
+  #importWizard .step .skip-btn:hover { background:#f3f4f6; }
+  #importWizard .step .opt-tag { font-size:11px; font-weight:600; color:#92400e; background:#fef3c7; padding:2px 6px; border-radius:4px; margin-left:4px; }
+</style>
+</head>
+<body>
+<header class="toolbar" id="toolbar" style="display:none;">
+  <h1>🏨 房型分词分类验收</h1>
+  <div class="toolbar-left">
+    <a class="btn" href="index.html">← 回到首页</a>
+    <button onclick="resetAndReimport()" id="reimportBtn" title="重新导入会丢失所有本地进度">🔄 导入新文件</button>
+    <div class="nav">
+      <button id="prevBtn" title="上一条 (←)">◀</button>
+      <span class="progress">第 <b id="curIdx">1</b> / <b id="totalIdx">1</b> 条</span>
+      <button id="nextBtn" title="下一条 (→)">▶</button>
+    </div>
+    <input id="search" type="text" placeholder="搜索房型名跳转…">
+    <button onclick="toggleListView()" id="listViewBtn">📋 房型列表</button>
+    <button onclick="toggleStatsView()" id="statsViewBtn">📊 数据统计</button>
+  </div>
+  <div class="toolbar-right">
+    <span class="stat">房型审核 <b id="stRoomDone">0</b> / <b id="stRoomTotal">0</b></span>
+    <button onclick="markCurrentAllOk()">本条全部标对</button>
+    <button onclick="gotoUndone()">⏭ 跳转至未完成</button>
+    <button class="primary" onclick="exportXlsx()">📥 导出 xlsx</button>
+    <button class="primary" onclick="exportHtml()">📄 导出 HTML</button>
+  </div>
+</header>
+
+<section id="importWizard">
+  <div class="page-home-bar"><a class="btn" href="index.html">← 回到首页</a></div>
+  <h1 class="landing-title">✂️ 房型分词分类</h1>
+  <div class="landing-grid">
+    <div class="wizard-col wizard-col-left">
+      <div class="col-heading">新建验收</div>
+      <div class="subtitle">浏览器端验收平台 · 结构表（必选）+ 规则表（可选）+ 验收表（roomname/result）</div>
+      <div class="step current" id="step1">
+        <h3><span class="num"><span>1</span></span> 导入分词分类结构表 <span id="step1Reupload"></span></h3>
+        <div class="req">表头列必须包含：<code>大类</code>、<code>一级子类</code>、<code>二级子类</code>、<code>定义</code>、<code>举例</code>、<code>模型输出分类名称</code></div>
+        <label class="upload-btn" for="step1File" id="step1Btn">📂 选择文件…</label>
+        <input type="file" id="step1File" accept=".xlsx,.xls" style="display:none;">
+        <div id="step1Info"></div>
+        <div id="step1Err"></div>
+      </div>
+      <div class="step locked" id="step1b">
+        <h3><span class="num"><span>2</span></span> 导入名称治理规则表 <span class="opt-tag">可选</span> <span id="step1bReupload"></span></h3>
+        <div class="req">表头列必须包含：<code>语义分类</code>、<code>子类规则</code>、<code>举例</code>、<code>中文房型名称是否允许填写</code>、<code>是否为标签词</code>、<code>对应运营审核类型</code></div>
+        <label class="upload-btn disabled" for="step1bFile" id="step1bBtn">📂 选择文件…</label>
+        <button type="button" class="skip-btn" id="step1bSkip" disabled>跳过</button>
+        <input type="file" id="step1bFile" accept=".xlsx,.xls" style="display:none;" disabled>
+        <div id="step1bInfo"></div>
+        <div id="step1bErr"></div>
+      </div>
+      <div class="step locked" id="step2">
+        <h3><span class="num"><span>3</span></span> 导入本次验收 Excel <span id="step2Reupload"></span></h3>
+        <div class="req">表头列必须包含：<code>masterhotelid</code>、<code>basicroomtypeid</code>、<code>roomname</code>、<code>result</code>。<br>
+          <code>roomname</code> 为 JSON，形如 <code>[{"房型名称":"…","参考分词":"","参考分类":""}]</code>，取「房型名称」。<br>
+          <code>result</code> 为 JSON，形如 <code>[[{"分词结果":"…","类别":"…","是否房型缺陷":false,"缺陷类型":""},…]]</code>，解析为分词/分类/缺陷。</div>
+        <label class="upload-btn disabled" for="step2File" id="step2Btn">📂 选择文件…</label>
+        <input type="file" id="step2File" accept=".xlsx,.xls" style="display:none;" disabled>
+        <div id="step2Info"></div>
+        <div id="step2Err"></div>
+      </div>
+      <button class="continue-btn" id="continueBtn" disabled>继续 ▶</button>
+    </div>
+    <div class="wizard-col wizard-col-right">
+      <div class="col-heading">汇总验收 HTML</div>
+      <div class="subtitle">选择多个「📄 导出 HTML」验收快照，合并为一份（可处理重复房型）</div>
+      <div class="step current" id="mergeStep">
+        <h3><span class="num"><span>1</span></span> 选择快照文件</h3>
+        <div class="req">仅支持本工具导出的 HTML 快照（内含 <code>__DATA__</code> 与验收进度）。</div>
+        <label class="upload-btn" for="mergeFilesInput" id="mergeFilesBtn">📂 选择 HTML 文件（可多选）…</label>
+        <input type="file" id="mergeFilesInput" accept=".html,.htm" multiple style="display:none;">
+      </div>
+      <div id="mergeFileList" class="merge-file-list"></div>
+      <div id="mergeDupPanel" class="merge-dup-panel">
+        <h4>⚠ 重复房型名称 — 请勾选要保留的条目</h4>
+        <div id="mergeDupTable"></div>
+      </div>
+      <div id="mergeErr"></div>
+      <button class="continue-btn" id="mergeBtn" disabled>开始合并并打开 ▶</button>
+    </div>
+  </div>
+</section>
+
+<main id="cards" style="display:none;"></main>
+
+<section id="listView">
+  <h2>📋 全部房型一览（点击任意条进入详情）</h2>
+  <div class="list-toolbar">
+    <span class="count-hint" id="listCountHint"></span>
+    <button type="button" class="filter-pill active" data-list-filter="all">全部 <span class="small" id="listCntAll">0</span></button>
+    <button type="button" class="filter-pill" data-list-filter="phraseWrong">分词错 <span class="small" id="listCntPhraseWrong">0</span></button>
+    <button type="button" class="filter-pill" data-list-filter="catWrong">分类错 <span class="small" id="listCntCatWrong">0</span></button>
+  </div>
+  <div class="list-grid" id="listGrid"></div>
+</section>
+
+<section id="statsView">
+  <h2>📊 数据统计</h2>
+  <div class="kpis" id="kpiCards"></div>
+  <h3 style="margin:8px 0 12px; font-size:15px;">分词分类统计（按分词汇总）</h3>
+  <div class="stats-toolbar">
+    <span class="count-hint" id="phraseCountHint">共 0 个不同分词</span>
+    <button class="filter-pill active" data-filter="all">全部 <span class="small" id="cntAll">0/0</span></button>
+    <button class="filter-pill" data-filter="multi">一词模型多分类 <span class="small" id="cntMulti">0/0</span></button>
+    <button class="filter-pill" data-filter="wrong">分类错误 <span class="small" id="cntWrong">0/0</span></button>
+  </div>
+  <table class="stats-table" id="phraseTable">
+    <thead><tr><th style="width:160px;">分词</th><th>模型分类（次数）</th><th>人工验收分类（次数）</th></tr></thead>
+    <tbody></tbody>
+  </table>
+  <div class="danger-zone">
+    <b>⚠ 危险操作</b><br>
+    <span style="font-size:12px; color:#7f1d1d;">清空当前浏览器中的所有验收记录（不影响已上传文件，但会丢失未导出的进度）。</span>
+    <div style="margin-top:8px;"><button onclick="clearLocal()">🗑 清空本地验收记录</button></div>
+  </div>
+</section>
+
+<div id="tip" role="tooltip"></div>
+
+<script id="__DATA__" type="application/json"></script>
+<script id="__STATE_SNAPSHOT__" type="application/json"></script>
+<script>
+// ====== Module-level state ======
+let DATA = null;
+let TAXO_ENTRIES = []; // raw taxonomy entries from uploaded structure xlsx
+let TAXO_BY_CAT = {};  // {category → taxonomy entry (+ optional rule fields)}
+let DEFECT_BY_CAT = {};// {category → entry whose 大类 matches DEFECT_GROUP_REGEX}
+let DEFECT_FALLBACK = null; // first 大类=缺陷信息 entry (used when no specific match)
+let RULES_BY_CAT = {}; // {category → rule row}
+let RULES_LOADED = false;
+let RAW_DATA_ROWS = []; // parsed verification rows {roomName, phrase, category, defect, defectType}
+let state = {};
+
+// ====== Constants ======
+const STATE_KEY = 'roomTokenReview.v2';
+const HASH_KEY = 'roomTokenReview.v2.payloadHash';
+const IDX_KEY = 'roomTokenReview.v2.curIdx';
+const PAYLOAD_KEY = 'roomTokenReview.v2.payload';
+const TAXO_KEY = 'roomTokenReview.v2.taxoIndex';
+const ROOM_KEY_PREFIX = 'room__';            // state[ROOM_KEY_PREFIX + roomId] = room-level state
+const SAVE_DEBOUNCE_MS = 200;                // localStorage write debounce
+const SOFT_DELETED_LABEL = '软删除';          // shown in stats / export for soft-deleted tokens
+const ADDED_TOKEN_LABEL = '新增';             // shown in export for user-added tokens
+const DEFECT_DISPLAY_NAME = '房型缺陷';       // user-facing label for the defect category
+const DEFECT_RAW_KEY = 'defect';             // literal placeholder used in taxonomy xlsx category column
+const DEFECT_GROUP_REGEX = /缺陷/;           // matches entries belonging to the 缺陷信息 大类
+const UNCATEGORIZED = '未分类';
+
+try { state = JSON.parse(localStorage.getItem(STATE_KEY) || '{}'); } catch(e){ state = {}; }
+
+// ====== Helpers: room-level state ======
+function getRoomState(roomId){ return state[ROOM_KEY_PREFIX + roomId] || null; }
+function ensureRoomState(roomId){
+  const k = ROOM_KEY_PREFIX + roomId;
+  if (!state[k]) state[k] = {};
+  return state[k];
+}
+
+// ====== Helpers: misc ======
+function pad2(n){ return String(n).padStart(2, '0'); }
+function timestampSlug(){
+  const d = new Date();
+  return `${d.getFullYear()}${pad2(d.getMonth()+1)}${pad2(d.getDate())}_${pad2(d.getHours())}${pad2(d.getMinutes())}`;
+}
+
+// ====== Hash ======
+async function sha1Hex(str){
+  const enc = new TextEncoder().encode(str);
+  const buf = await crypto.subtle.digest('SHA-1', enc);
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,12);
+}
+
+// ====== Boot ======
+// Try to restore a session, in priority order:
+//   1. __STATE_SNAPSHOT__ inline state (always merged in if present)
+//   2. inline __DATA__ payload (snapshot HTML exports)
+//   3. localStorage payload + taxoIndex (normal session resume)
+// Returns true if a session was restored (board already entered); false otherwise.
+function restoreSession(){
+  // Pull and parse inline __STATE_SNAPSHOT__ state if present (always merged)
+  const snapTxt = (document.getElementById('__STATE_SNAPSHOT__').textContent||'').trim();
+  if (snapTxt) {
+    try {
+      const snap = JSON.parse(snapTxt);
+      if (snap && typeof snap === 'object') {
+        state = snap;
+        localStorage.setItem(STATE_KEY, JSON.stringify(state));
+      }
+    } catch(e) { console.warn('snapshot parse failed', e); }
+  }
+
+  // 1. Inline payload (snapshot HTML)
+  const dataEl = document.getElementById('__DATA__');
+  const inlineRaw = (dataEl ? (dataEl.textContent||'') : '').trim();
+  if (inlineRaw && inlineRaw !== '') {
+    try {
+      const parsed = JSON.parse(inlineRaw);
+      if (parsed && parsed.rooms && parsed.rooms.length) {
+        DATA = parsed;
+        if (DATA.taxonomy) TAXO_BY_CAT = DATA.taxonomy;
+        if (DATA.defectByCat) DEFECT_BY_CAT = DATA.defectByCat;
+        RULES_LOADED = !!(DATA.rulesLoaded) || Object.values(TAXO_BY_CAT).some(e => e && (e._hasRules || (Array.isArray(e.rules) && e.rules.length)));
+        enterBoard();
+        return true;
+      }
+    } catch(e) { console.warn('embedded DATA parse failed', e); }
+  }
+
+  // 2. localStorage payload (resume from previous browser session)
+  try {
+    const persistedPayload = localStorage.getItem(PAYLOAD_KEY);
+    const persistedTaxo = localStorage.getItem(TAXO_KEY);
+    if (persistedPayload && persistedTaxo) {
+      const payload = JSON.parse(persistedPayload);
+      const taxoBlob = JSON.parse(persistedTaxo);
+      if (payload && payload.rooms && payload.rooms.length) {
+        DATA = payload;
+        TAXO_BY_CAT = taxoBlob.taxoByCat || {};
+        DEFECT_BY_CAT = taxoBlob.defectByCat || {};
+        DEFECT_FALLBACK = taxoBlob.defectFallback || null;
+        RULES_LOADED = !!(taxoBlob.rulesLoaded) || Object.values(TAXO_BY_CAT).some(e => e && (e._hasRules || (Array.isArray(e.rules) && e.rules.length)));
+        enterBoard();
+        return true;
+      }
+    }
+  } catch(e) { console.warn('restore persisted import failed', e); }
+
+  return false;
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  if (!restoreSession()) showLandingPage();
+});
+
+function showLandingPage(){
+  document.getElementById('importWizard').style.display = 'block';
+  document.getElementById('toolbar').style.display = 'none';
+  document.getElementById('cards').style.display = 'none';
+  document.getElementById('listView').classList.remove('active');
+  document.getElementById('statsView').classList.remove('active');
+  initImportWizard();
+  initMergeWizard();
+}
+
+let _importWizardHandlersBound = false;
+let _mergeWizardHandlersBound = false;
+
+function initImportWizard(){
+  const step1 = document.getElementById('step1');
+  const step1b = document.getElementById('step1b');
+  const step2 = document.getElementById('step2');
+  const step1Btn = document.getElementById('step1Btn');
+  const step1bBtn = document.getElementById('step1bBtn');
+  const step2Btn = document.getElementById('step2Btn');
+  const step1File = document.getElementById('step1File');
+  const step1bFile = document.getElementById('step1bFile');
+  const step2File = document.getElementById('step2File');
+  const step1Info = document.getElementById('step1Info');
+  const step1bInfo = document.getElementById('step1bInfo');
+  const step2Info = document.getElementById('step2Info');
+  const step1Err = document.getElementById('step1Err');
+  const step1bErr = document.getElementById('step1bErr');
+  const step2Err = document.getElementById('step2Err');
+  const step1bSkip = document.getElementById('step1bSkip');
+  const continueBtn = document.getElementById('continueBtn');
+  let taxoFileName = '';
+  let rulesFileName = '';
+  let dataFileName = '';
+  let rulesSkipped = false;
+  let rulesOrphans = [];
+
+  function unlockStep1bAnd2(){
+    step1b.classList.remove('locked');
+    if (!step1b.classList.contains('done')) step1b.classList.add('current');
+    step1bBtn.classList.remove('disabled');
+    step1bFile.disabled = false;
+    step1bSkip.disabled = false;
+    step2.classList.remove('locked');
+    if (!step2.classList.contains('done')) step2.classList.add('current');
+    step2Btn.classList.remove('disabled');
+    step2File.disabled = false;
+  }
+
+  function markStep1bDone(msgHtml){
+    step1b.classList.remove('current'); step1b.classList.add('done');
+    step1bInfo.innerHTML = msgHtml;
+    document.getElementById('step1bReupload').innerHTML = '<button class="reupload" onclick="document.getElementById(\'step1bFile\').click()">重新上传</button>';
+  }
+
+  // Reset visual state (in case wizard is being re-entered after a previous import)
+  step1.classList.remove('done'); step1.classList.add('current');
+  step1b.classList.remove('done', 'current'); step1b.classList.add('locked');
+  step2.classList.remove('done', 'current'); step2.classList.add('locked');
+  step1Info.innerHTML = ''; step1bInfo.innerHTML = ''; step2Info.innerHTML = '';
+  step1Err.innerHTML = ''; step1bErr.innerHTML = ''; step2Err.innerHTML = '';
+  document.getElementById('step1Reupload').innerHTML = '';
+  document.getElementById('step1bReupload').innerHTML = '';
+  document.getElementById('step2Reupload').innerHTML = '';
+  step1bBtn.classList.add('disabled');
+  step2Btn.classList.add('disabled');
+  step1bFile.disabled = true;
+  step2File.disabled = true;
+  step1bSkip.disabled = true;
+  continueBtn.disabled = true;
+  step1File.value = '';
+  step1bFile.value = '';
+  step2File.value = '';
+  RULES_LOADED = false;
+  rulesOrphans = [];
+
+  if (_importWizardHandlersBound) return;
+  _importWizardHandlersBound = true;
+
+  step1File.onchange = async (e) => {
+    step1Err.innerHTML = ''; step1Info.innerHTML = '';
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      const buf = await file.arrayBuffer();
+      const result = parseTaxonomyXlsx(buf);
+      TAXO_ENTRIES = result.entries;
+      buildTaxoIndices();
+      // re-apply rules if already loaded
+      if (RULES_BY_CAT && Object.keys(RULES_BY_CAT).length) {
+        rulesOrphans = mergeRulesIntoTaxo(RULES_BY_CAT);
+      }
+      taxoFileName = file.name;
+      step1.classList.remove('current'); step1.classList.add('done');
+      step1Info.innerHTML = `<div class="file-info">✅ <b>${escapeHtml(file.name)}</b><br>解析到 <b>${result.entries.length}</b> 条分类条目，含 <b>${Object.keys(TAXO_BY_CAT).length}</b> 个 category 映射，<b>${Object.keys(DEFECT_BY_CAT).length}</b> 个缺陷信息条目。</div>`;
+      document.getElementById('step1Reupload').innerHTML = '<button class="reupload" onclick="document.getElementById(\'step1File\').click()">重新上传</button>';
+      unlockStep1bAnd2();
+    } catch(err) {
+      step1Err.innerHTML = `<div class="err">❌ ${escapeHtml(err.message)}</div>`;
+    }
+    step1File.value = '';
+  };
+
+  step1bFile.onchange = async (e) => {
+    step1bErr.innerHTML = ''; step1bInfo.innerHTML = '';
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      if (!Object.keys(TAXO_BY_CAT).length) throw new Error('请先导入分词分类结构表');
+      const buf = await file.arrayBuffer();
+      const result = parseRulesXlsx(buf);
+      RULES_BY_CAT = result.byCat;
+      RULES_LOADED = true;
+      rulesSkipped = false;
+      rulesFileName = file.name;
+      rulesOrphans = mergeRulesIntoTaxo(RULES_BY_CAT);
+      const matchedCats = Object.keys(RULES_BY_CAT).length - rulesOrphans.length;
+      let matchedRules = 0;
+      for (const [cat, rules] of Object.entries(RULES_BY_CAT)) {
+        if (rulesOrphans.includes(cat)) continue;
+        matchedRules += Array.isArray(rules) ? rules.length : 1;
+      }
+      let orphanNote = '';
+      if (rulesOrphans.length) {
+        orphanNote = `<br>⚠ 规则表中有 <b>${rulesOrphans.length}</b> 个分类在结构表中不存在（已忽略）：${escapeHtml(rulesOrphans.slice(0,8).join('、'))}${rulesOrphans.length>8?'…':''}`;
+      }
+      markStep1bDone(`<div class="file-info">✅ <b>${escapeHtml(file.name)}</b><br>解析到 <b>${result.count}</b> 条治理规则（<b>${Object.keys(RULES_BY_CAT).length}</b> 个分类），已合并 <b>${matchedRules}</b> 条到 <b>${matchedCats}</b> 个分类。${orphanNote}</div>`);
+    } catch(err) {
+      step1bErr.innerHTML = `<div class="err">❌ ${escapeHtml(err.message)}</div>`;
+    }
+    step1bFile.value = '';
+  };
+
+  step1bSkip.onclick = () => {
+    rulesSkipped = true;
+    RULES_LOADED = false;
+    RULES_BY_CAT = {};
+    rulesFileName = '';
+    rulesOrphans = [];
+    // clear rule fields from taxo entries but keep structure
+    for (const e of Object.values(TAXO_BY_CAT)) {
+      delete e['子类规则'];
+      delete e['规则举例'];
+      delete e['中文房型名称是否允许填写'];
+      delete e['是否为标签词'];
+      delete e['对应运营审核类型'];
+      delete e['对应运营审核大类'];
+      delete e['对应审核大类'];
+      e.rules = [];
+      e._hasRules = false;
+    }
+    markStep1bDone(`<div class="file-info">⏭ 已跳过名称治理规则表。治理规则 Tab 将显示空态提示。</div>`);
+  };
+
+  step2File.onchange = async (e) => {
+    step2Err.innerHTML = ''; step2Info.innerHTML = '';
+    const file = e.target.files[0]; if (!file) return;
+    try {
+      const buf = await file.arrayBuffer();
+      const result = parseDataXlsx(buf);
+      RAW_DATA_ROWS = result.rows;
+      dataFileName = file.name;
+      step2.classList.remove('current'); step2.classList.add('done');
+      step2Info.innerHTML = `<div class="file-info">✅ <b>${escapeHtml(file.name)}</b><br>解析到 <b>${result.rooms}</b> 个房型，<b>${result.rows.length}</b> 个分词，涉及 <b>${result.categories}</b> 个 category。</div>`;
+      document.getElementById('step2Reupload').innerHTML = '<button class="reupload" onclick="document.getElementById(\'step2File\').click()">重新上传</button>';
+      continueBtn.disabled = false;
+    } catch(err) {
+      step2Err.innerHTML = `<div class="err">❌ ${escapeHtml(err.message)}</div>`;
+      continueBtn.disabled = true;
+    }
+    step2File.value = '';
+  };
+
+  continueBtn.onclick = async () => {
+    if (!Object.keys(TAXO_BY_CAT).length) {
+      alert('请先导入分词分类结构表');
+      return;
+    }
+    const missing = [];
+    const seenCats = new Set();
+    for (const r of RAW_DATA_ROWS) {
+      if (r.category && !seenCats.has(r.category)) {
+        seenCats.add(r.category);
+        if (!TAXO_BY_CAT[r.category]) missing.push(r.category);
+      }
+    }
+    if (missing.length) {
+      alert(`category ${missing.join('、')} 缺少匹配，请联系产品`);
+      return;
+    }
+    if (rulesOrphans.length) {
+      // already warned in step1b info; non-blocking
+    }
+    DATA = await buildPayloadFromRaw(RAW_DATA_ROWS, taxoFileName + '|' + rulesFileName + '|' + dataFileName);
+    const prevHash = localStorage.getItem(HASH_KEY);
+    if (prevHash && prevHash !== DATA.payloadHash) {
+      if (confirm('数据已更新（与上次审核的房型集合不同），是否清空旧记录？')) {
+        state = {}; localStorage.setItem(STATE_KEY, '{}');
+      }
+      localStorage.removeItem(IDX_KEY);
+    } else if (!prevHash) {
+      localStorage.removeItem(IDX_KEY);
+    }
+    localStorage.setItem(HASH_KEY, DATA.payloadHash);
+    persistImportedDataset();
+    enterBoard();
+  };
+}
+
+function persistImportedDataset(){
+  try {
+    localStorage.setItem(PAYLOAD_KEY, JSON.stringify(DATA));
+    localStorage.setItem(TAXO_KEY, JSON.stringify({
+      taxoByCat: TAXO_BY_CAT,
+      defectByCat: DEFECT_BY_CAT,
+      defectFallback: DEFECT_FALLBACK,
+      rulesLoaded: RULES_LOADED,
+    }));
+  } catch(e) {
+    console.warn('persist import failed', e);
+    alert('保存到本地失败（数据可能过大）：' + e.message);
+  }
+}
+
+window.resetAndReimport = function(){
+  if (!confirm('重新导入会丢失所有本地进度，建议先导出当前文件。\n\n确认要继续重新导入吗？')) return;
+  // Clear all import + state keys
+  localStorage.removeItem(PAYLOAD_KEY);
+  localStorage.removeItem(TAXO_KEY);
+  localStorage.removeItem(STATE_KEY);
+  localStorage.removeItem(HASH_KEY);
+  localStorage.removeItem(IDX_KEY);
+  // Reset module-level globals
+  DATA = null;
+  TAXO_ENTRIES = [];
+  TAXO_BY_CAT = {};
+  DEFECT_BY_CAT = {};
+  DEFECT_FALLBACK = null;
+  RULES_BY_CAT = {};
+  RULES_LOADED = false;
+  RAW_DATA_ROWS = [];
+  state = {};
+  showLandingPage();
+};
+
+// ====== HTML snapshot merge ======
+let mergeParsedList = [];
+
+function isRoomDoneWithState(room, st){
+  const rs = st[ROOM_KEY_PREFIX + room.id] || {};
+  if (rs.phraseWrong) {
+    const hasEdit = (rs.newTokens && rs.newTokens.length > 0) || (rs.deletedTokenIdx && rs.deletedTokenIdx.length > 0);
+    if (hasEdit) return true;
+  }
+  return room.tokens.every(t => {
+    const s = st[room.id + '__' + t.i];
+    return s && (s.mark === 'ok' || s.mark === 'ng');
+  });
+}
+
+async function parseSnapshotHtmlFile(file){
+  const text = await file.text();
+  const doc = new DOMParser().parseFromString(text, 'text/html');
+  const dataRaw = doc.getElementById('__DATA__')?.textContent?.trim();
+  const stateRaw = doc.getElementById('__STATE_SNAPSHOT__')?.textContent?.trim();
+  if (!dataRaw) throw new Error('不是有效的验收快照（缺少 __DATA__）');
+  const data = JSON.parse(dataRaw);
+  let snap = {};
+  if (stateRaw) {
+    try { snap = JSON.parse(stateRaw); } catch(e) { throw new Error('验收进度解析失败'); }
+  }
+  if (!data.rooms?.length) throw new Error('快照中无房型数据');
+  return { fileName: file.name, data, state: snap };
+}
+
+function remapRoomState(oldId, newId, srcState, dstState){
+  const rk = ROOM_KEY_PREFIX + oldId;
+  if (srcState[rk]) dstState[ROOM_KEY_PREFIX + newId] = JSON.parse(JSON.stringify(srcState[rk]));
+  const prefix = oldId + '__';
+  for (const k of Object.keys(srcState)) {
+    if (k.startsWith(prefix)) {
+      dstState[newId + '__' + k.slice(prefix.length)] = JSON.parse(JSON.stringify(srcState[k]));
+    }
+  }
+}
+
+function collectMergeCandidates(okSnaps){
+  const out = [];
+  okSnaps.forEach((snap, fileIndex) => {
+    snap.data.rooms.forEach((room, roomIndex) => {
+      out.push({
+        key: fileIndex + ':' + room.id,
+        fileIndex,
+        roomIndex,
+        fileName: snap.fileName,
+        room,
+        state: snap.state,
+      });
+    });
+  });
+  return out;
+}
+
+function buildDuplicateGroups(candidates){
+  const byName = new Map();
+  for (const c of candidates) {
+    if (!byName.has(c.room.name)) byName.set(c.room.name, []);
+    byName.get(c.room.name).push(c);
+  }
+  const groups = [];
+  for (const [name, items] of byName) {
+    if (items.length > 1) groups.push({ name, items });
+  }
+  return groups;
+}
+
+function validateDupSelections(dupGroups){
+  for (const g of dupGroups) {
+    const anyChecked = g.items.some(it => {
+      const cb = document.getElementById('dup_' + it.key);
+      return cb && cb.checked;
+    });
+    if (!anyChecked) return g.name;
+  }
+  return null;
+}
+
+function getSelectedMergeKeys(dupGroups, candidates){
+  const dupKeys = new Set();
+  for (const g of dupGroups) {
+    for (const it of g.items) {
+      const cb = document.getElementById('dup_' + it.key);
+      if (cb && cb.checked) dupKeys.add(it.key);
+    }
+  }
+  const dupKeySet = new Set();
+  for (const g of dupGroups) g.items.forEach(it => dupKeySet.add(it.key));
+  return candidates.filter(c => {
+    if (!dupKeySet.has(c.key)) return true;
+    return dupKeys.has(c.key);
+  });
+}
+
+function checkTaxonomyDiffAcrossSnapshots(okSnaps){
+  if (okSnaps.length < 2) return;
+  const baseKeys = new Set(Object.keys(okSnaps[0].data.taxonomy || {}));
+  const diffs = [];
+  for (let i = 1; i < okSnaps.length; i++) {
+    const keys = new Set(Object.keys(okSnaps[i].data.taxonomy || {}));
+    const onlyInBase = [...baseKeys].filter(k => !keys.has(k));
+    const onlyInOther = [...keys].filter(k => !baseKeys.has(k));
+    if (onlyInBase.length || onlyInOther.length) {
+      diffs.push(`「${okSnaps[i].fileName}」与首份快照分类结构不一致`);
+    }
+  }
+  if (diffs.length) alert('分类结构差异提示（不阻断合并）：\n' + diffs.join('\n'));
+}
+
+async function mergeSnapshots(selectedCandidates, baseTaxonomy, baseDefectByCat){
+  const roomsOut = [];
+  const mergedState = {};
+  const roomNames = [];
+  let nextIdx = 0;
+  for (const c of selectedCandidates) {
+    const newId = 'r' + String(nextIdx).padStart(4, '0');
+    nextIdx++;
+    const roomCopy = JSON.parse(JSON.stringify(c.room));
+    roomCopy.id = newId;
+    roomsOut.push(roomCopy);
+    roomNames.push(c.room.name);
+    remapRoomState(c.room.id, newId, c.state, mergedState);
+  }
+  const payloadHash = await sha1Hex('merge|' + roomNames.join('|'));
+  const payload = {
+    generatedAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    rooms: roomsOut,
+    payloadHash,
+    taxonomy: baseTaxonomy,
+    defectByCat: baseDefectByCat,
+  };
+  return { payload, mergedState };
+}
+
+async function applyMergedPayload(payload, mergedState){
+  DATA = payload;
+  state = mergedState;
+  TAXO_BY_CAT = DATA.taxonomy || {};
+  DEFECT_BY_CAT = DATA.defectByCat || {};
+  DEFECT_FALLBACK = null;
+  for (const e of Object.values(TAXO_BY_CAT)) {
+    if (e && e['大类'] && DEFECT_GROUP_REGEX.test(e['大类']) && !DEFECT_FALLBACK) DEFECT_FALLBACK = e;
+  }
+  localStorage.setItem(HASH_KEY, DATA.payloadHash);
+  localStorage.setItem(STATE_KEY, JSON.stringify(state));
+  localStorage.removeItem(IDX_KEY);
+  persistImportedDataset();
+}
+
+function renderMergeFileList(){
+  const listEl = document.getElementById('mergeFileList');
+  const mergeBtn = document.getElementById('mergeBtn');
+  if (!listEl) return;
+  const okCount = mergeParsedList.filter(r => r.ok).length;
+  if (!mergeParsedList.length) {
+    listEl.innerHTML = '';
+    if (mergeBtn) mergeBtn.disabled = true;
+    return;
+  }
+  listEl.innerHTML = mergeParsedList.map(r => {
+    if (r.ok) {
+      return `<div class="merge-file-item ok">✅ <b>${escapeHtml(r.fileName)}</b> — ${r.data.rooms.length} 个房型</div>`;
+    }
+    return `<div class="merge-file-item err">❌ <b>${escapeHtml(r.fileName)}</b> — ${escapeHtml(r.error)}</div>`;
+  }).join('');
+  if (mergeBtn) mergeBtn.disabled = okCount < 1;
+}
+
+function renderMergeDupPanel(){
+  const panel = document.getElementById('mergeDupPanel');
+  const table = document.getElementById('mergeDupTable');
+  if (!panel || !table) return;
+  const okSnaps = mergeParsedList.filter(r => r.ok);
+  const candidates = collectMergeCandidates(okSnaps);
+  const dupGroups = buildDuplicateGroups(candidates);
+  if (!dupGroups.length) {
+    panel.classList.remove('visible');
+    table.innerHTML = '';
+    return;
+  }
+  panel.classList.add('visible');
+  let firstSeen = new Set();
+  table.innerHTML = dupGroups.map(g => {
+    const rows = g.items.map(it => {
+      const isFirst = !firstSeen.has(g.name);
+      if (isFirst) firstSeen.add(g.name);
+      const done = isRoomDoneWithState(it.room, it.state);
+      const status = done ? '<span class="pill-done">已完成</span>' : '<span class="pill-todo">未完成</span>';
+      return `<div class="dup-row">
+        <label><input type="checkbox" id="dup_${it.key}" data-key="${escapeHtml(it.key)}" ${isFirst ? 'checked' : ''}>
+        <span>${escapeHtml(it.fileName)} · ${it.room.tokens.length} 个分词 ${status}</span></label>
+      </div>`;
+    }).join('');
+    return `<div class="dup-group"><h5>${escapeHtml(g.name)}</h5>${rows}</div>`;
+  }).join('');
+}
+
+function initMergeWizard(){
+  const mergeInput = document.getElementById('mergeFilesInput');
+  const mergeFileList = document.getElementById('mergeFileList');
+  const mergeDupPanel = document.getElementById('mergeDupPanel');
+  const mergeDupTable = document.getElementById('mergeDupTable');
+  const mergeErr = document.getElementById('mergeErr');
+  const mergeBtn = document.getElementById('mergeBtn');
+  if (!mergeInput) return;
+
+  mergeParsedList = [];
+  if (mergeFileList) mergeFileList.innerHTML = '';
+  if (mergeDupPanel) mergeDupPanel.classList.remove('visible');
+  if (mergeDupTable) mergeDupTable.innerHTML = '';
+  if (mergeErr) mergeErr.innerHTML = '';
+  if (mergeBtn) {
+    mergeBtn.disabled = true;
+    mergeBtn.textContent = '开始合并并打开 ▶';
+  }
+  mergeInput.value = '';
+
+  if (_mergeWizardHandlersBound) return;
+  _mergeWizardHandlersBound = true;
+
+  mergeInput.onchange = async (e) => {
+    if (mergeErr) mergeErr.innerHTML = '';
+    const files = Array.from(e.target.files || []);
+    if (!files.length) {
+      mergeParsedList = [];
+      renderMergeFileList();
+      renderMergeDupPanel();
+      return;
+    }
+    mergeParsedList = [];
+    for (const file of files) {
+      try {
+        const parsed = await parseSnapshotHtmlFile(file);
+        mergeParsedList.push({ ok: true, fileName: file.name, data: parsed.data, state: parsed.state });
+      } catch(err) {
+        mergeParsedList.push({ ok: false, fileName: file.name, error: err.message });
+      }
+    }
+    renderMergeFileList();
+    renderMergeDupPanel();
+    mergeInput.value = '';
+  };
+
+  mergeBtn.onclick = async () => {
+    const okSnaps = mergeParsedList.filter(r => r.ok);
+    if (!okSnaps.length) {
+      if (mergeErr) mergeErr.innerHTML = '<div class="err">请先选择至少一个有效快照。</div>';
+      return;
+    }
+    const candidates = collectMergeCandidates(okSnaps);
+    const dupGroups = buildDuplicateGroups(candidates);
+    const blocked = validateDupSelections(dupGroups);
+    if (blocked) {
+      if (mergeErr) mergeErr.innerHTML = `<div class="err">房型「${escapeHtml(blocked)}」至少需勾选一条保留。</div>`;
+      return;
+    }
+    if (mergeErr) mergeErr.innerHTML = '';
+    const selected = getSelectedMergeKeys(dupGroups, candidates);
+    if (!selected.length) {
+      if (mergeErr) mergeErr.innerHTML = '<div class="err">未选择任何房型条目。</div>';
+      return;
+    }
+    checkTaxonomyDiffAcrossSnapshots(okSnaps);
+    mergeBtn.disabled = true;
+    mergeBtn.textContent = '合并中…';
+    try {
+      const base = okSnaps[0].data;
+      const { payload, mergedState } = await mergeSnapshots(selected, base.taxonomy || {}, base.defectByCat || {});
+      await applyMergedPayload(payload, mergedState);
+      const html = buildSnapshotHtmlString(payload, mergedState);
+      downloadSnapshotHtml(html, `房型分词验收_快照_合并_${timestampSlug()}.html`);
+      enterBoard();
+    } catch(err) {
+      if (mergeErr) mergeErr.innerHTML = `<div class="err">❌ ${escapeHtml(err.message)}</div>`;
+      mergeBtn.disabled = false;
+      mergeBtn.textContent = '开始合并并打开 ▶';
+    }
+  };
+}
+
+function parseTaxonomyXlsx(arrayBuf){
+  const wb = XLSX.read(arrayBuf, {type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+  if (aoa.length < 2) throw new Error('表为空');
+  const required = ['大类','一级子类','二级子类','定义','举例','模型输出分类名称'];
+  let headerRow = null, headerIdx = -1;
+  for (let i=0;i<Math.min(aoa.length, 5);i++){
+    const cells = aoa[i].map(c => c==null ? '' : String(c).trim());
+    if (required.every(r => cells.includes(r))) { headerRow = cells; headerIdx = i; break; }
+  }
+  if (!headerRow) {
+    throw new Error('表头不符合要求。需要包含以下列：\n' + required.join('、'));
+  }
+  const colIdx = {};
+  required.forEach(k => colIdx[k] = headerRow.indexOf(k));
+  const entries = [];
+  let cur大类 = null;
+  let cur大类定义 = null;
+  let cur一级子类 = null;
+  let last_entry = null;
+  for (let i=headerIdx+1;i<aoa.length;i++){
+    const row = aoa[i];
+    if (!row) continue;
+    const get = (k) => { const v = row[colIdx[k]]; return v==null ? null : String(v).trim() || null; };
+    const da = get('大类'), l1 = get('一级子类'), l2 = get('二级子类');
+    const definition = get('定义'), examples = get('举例');
+    const cat = get('模型输出分类名称');
+    if (da && da.startsWith('定义：')) { cur大类定义 = da.slice('定义：'.length).trim(); continue; }
+    if (da) { cur大类 = da; cur大类定义 = null; cur一级子类 = null; }
+    const isRealL1 = !!l1 && (l1.includes('/') || l1.includes('(') || l1.includes('（'));
+    if (isRealL1) cur一级子类 = l1;
+    const l1Use = cur一级子类;
+    if (!l1 && !l2 && !definition && !examples && !cat) continue;
+    const isCont = (!isRealL1) && (l2==null) && last_entry && last_entry['一级子类']===l1Use;
+    if (isCont) {
+      if (definition) last_entry['定义'] = (last_entry['定义']||'') + (last_entry['定义']?' ':'') + definition;
+      if (examples) last_entry['举例'] = (last_entry['举例']||'') + (last_entry['举例']?'；':'') + examples;
+      if (cat) last_entry['category'] = cat;
+      continue;
+    }
+    const e = {
+      '大类': cur大类, '大类定义': cur大类定义,
+      '一级子类': l1Use, '二级子类': l2,
+      '定义': definition, '举例': examples,
+      'category': cat,
+      _hasRules: false,
+    };
+    entries.push(e);
+    last_entry = e;
+  }
+  return { entries };
+}
+
+function parseRulesXlsx(arrayBuf){
+  const wb = XLSX.read(arrayBuf, {type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+  if (aoa.length < 2) throw new Error('表为空');
+  const required = ['语义分类','子类规则','举例','中文房型名称是否允许填写','是否为标签词','对应运营审核类型'];
+  let headerRow = null, headerIdx = -1;
+  for (let i=0;i<Math.min(aoa.length, 5);i++){
+    const cells = aoa[i].map(c => c==null ? '' : String(c).trim());
+    if (required.every(r => cells.includes(r))) { headerRow = cells; headerIdx = i; break; }
+  }
+  if (!headerRow) {
+    throw new Error('表头不符合要求。需要包含以下列：\n' + required.join('、'));
+  }
+  const colIdx = {};
+  required.forEach(k => colIdx[k] = headerRow.indexOf(k));
+  const byCat = {};
+  let count = 0;
+  for (let i=headerIdx+1;i<aoa.length;i++){
+    const row = aoa[i];
+    if (!row) continue;
+    const get = (k) => { const v = row[colIdx[k]]; return v==null ? null : String(v).trim() || null; };
+    let cat = get('语义分类');
+    if (!cat) continue;
+    if (cat === DEFECT_RAW_KEY) cat = DEFECT_DISPLAY_NAME;
+    const rule = {
+      category: cat,
+      '子类规则': get('子类规则'),
+      '规则举例': get('举例'),
+      '中文房型名称是否允许填写': get('中文房型名称是否允许填写'),
+      '是否为标签词': get('是否为标签词'),
+      '对应运营审核类型': get('对应运营审核类型'),
+    };
+    if (!byCat[cat]) byCat[cat] = [];
+    byCat[cat].push(rule);
+    count++;
+  }
+  return { byCat, count };
+}
+
+/** Merge rules into TAXO_BY_CAT. rulesByCat[cat] is an array of rule objects. Returns orphan category names. */
+function mergeRulesIntoTaxo(rulesByCat){
+  const orphans = [];
+  for (const e of Object.values(TAXO_BY_CAT)) {
+    e.rules = [];
+    e['子类规则'] = null;
+    e['规则举例'] = null;
+    e['中文房型名称是否允许填写'] = null;
+    e['是否为标签词'] = null;
+    e['对应运营审核类型'] = null;
+    e['对应运营审核大类'] = null;
+    e['对应审核大类'] = null;
+    e._hasRules = false;
+  }
+  for (const [cat, rules] of Object.entries(rulesByCat || {})) {
+    const list = Array.isArray(rules) ? rules : (rules ? [rules] : []);
+    const e = TAXO_BY_CAT[cat];
+    if (!e) { orphans.push(cat); continue; }
+    e.rules = list;
+    e._hasRules = list.length > 0;
+  }
+  return orphans;
+}
+
+function buildTaxoIndices(){
+  TAXO_BY_CAT = {};
+  DEFECT_BY_CAT = {};
+  DEFECT_FALLBACK = null;
+  for (const e of TAXO_ENTRIES) {
+    if (e.category === DEFECT_RAW_KEY) e.category = DEFECT_DISPLAY_NAME;
+    if (e.category) TAXO_BY_CAT[e.category] = e;
+    if (e['大类'] && DEFECT_GROUP_REGEX.test(e['大类'])) {
+      if (!DEFECT_FALLBACK) DEFECT_FALLBACK = e;
+      if (e.category) DEFECT_BY_CAT[e.category] = e;
+    }
+  }
+}
+
+function tryParseJson(val){
+  if (val == null) return null;
+  if (typeof val === 'object') return val;
+  let s = String(val).trim();
+  if (!s) return null;
+  // Excel sometimes wraps JSON in quotes or doubles quotes
+  try { return JSON.parse(s); } catch(e) {}
+  try {
+    if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+      s = s.slice(1, -1);
+    }
+    s = s.replace(/""/g, '"');
+    return JSON.parse(s);
+  } catch(e) {
+    throw new Error('JSON 解析失败：' + (e.message || e) + '\n片段：' + String(val).slice(0, 120));
+  }
+}
+
+function parseRoomNameCell(val){
+  // [{"房型名称":"标准大床房…","参考分词":"","参考分类":""}]
+  const parsed = tryParseJson(val);
+  if (Array.isArray(parsed) && parsed.length) {
+    const first = parsed[0];
+    if (first && typeof first === 'object') {
+      const name = first['房型名称'] ?? first.roomName ?? first.roomname ?? first.name;
+      if (name != null && String(name).trim() !== '') return String(name).trim();
+    }
+  }
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const name = parsed['房型名称'] ?? parsed.roomName ?? parsed.roomname ?? parsed.name;
+    if (name != null && String(name).trim() !== '') return String(name).trim();
+  }
+  // fallback: plain string room name
+  const plain = String(val == null ? '' : val).trim();
+  if (plain && !plain.startsWith('[') && !plain.startsWith('{')) return plain;
+  throw new Error('无法从 roomname 解析「房型名称」：' + String(val).slice(0, 120));
+}
+
+function flattenTokenList(parsed){
+  // result 形如 [[{...}, {...}]] 或 [{...}, {...}]
+  if (!Array.isArray(parsed)) return [];
+  if (parsed.length && Array.isArray(parsed[0])) {
+    return parsed.flat().filter(x => x && typeof x === 'object' && !Array.isArray(x));
+  }
+  return parsed.filter(x => x && typeof x === 'object' && !Array.isArray(x));
+}
+
+function toDefectBool(v){
+  return v === true || v === 1 || String(v).trim().toLowerCase() === 'true' || String(v).trim() === '1';
+}
+
+function parseResultCell(val){
+  // [[{"分词结果":"标准","类别":"房型档次","是否房型缺陷":false,"缺陷类型":""}, ...]]
+  const parsed = tryParseJson(val);
+  const tokens = flattenTokenList(parsed);
+  return tokens.map(t => {
+    const phrase = t['分词结果'] ?? t.phrase ?? '';
+    const category = t['类别'] ?? t.category ?? null;
+    const defect = toDefectBool(t['是否房型缺陷'] ?? t.defect);
+    const defectTypeRaw = t['缺陷类型'] ?? t.defectType ?? t.defecttype ?? null;
+    const defectType = defectTypeRaw == null || String(defectTypeRaw).trim() === ''
+      ? null
+      : String(defectTypeRaw);
+    return {
+      phrase: phrase == null ? '' : String(phrase),
+      category: category == null ? null : (String(category).trim() || null),
+      defect,
+      defectType,
+    };
+  });
+}
+
+function findHeaderIndex(cells, names){
+  const lower = cells.map(c => c.toLowerCase());
+  for (const n of names) {
+    const i = lower.indexOf(n.toLowerCase());
+    if (i >= 0) return i;
+  }
+  return -1;
+}
+
+function parseDataXlsx(arrayBuf){
+  const wb = XLSX.read(arrayBuf, {type:'array'});
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+  if (aoa.length < 2) throw new Error('表为空');
+  const cells = aoa[0].map(c => c==null ? '' : String(c).trim());
+  const hotelCol = findHeaderIndex(cells, ['masterhotelid', 'masterHotelId']);
+  const basicCol = findHeaderIndex(cells, ['basicroomtypeid', 'basicRoomTypeId']);
+  const roomCol = findHeaderIndex(cells, ['roomname', 'roomName']);
+  const resultCol = findHeaderIndex(cells, ['result']);
+  const missing = [];
+  if (hotelCol < 0) missing.push('masterhotelid');
+  if (basicCol < 0) missing.push('basicroomtypeid');
+  if (roomCol < 0) missing.push('roomname');
+  if (resultCol < 0) missing.push('result');
+  if (missing.length) {
+    throw new Error('表头缺少必需列：' + missing.join('、') + '\n实际表头：' + cells.filter(Boolean).join('、'));
+  }
+  const rows = [];
+  const roomKeySet = new Set();
+  const catSet = new Set();
+  for (let i=1;i<aoa.length;i++){
+    const row = aoa[i]; if (!row) continue;
+    const hotelRaw = row[hotelCol];
+    const basicRaw = row[basicCol];
+    const roomRaw = row[roomCol];
+    const resultRaw = row[resultCol];
+    if ((roomRaw == null || String(roomRaw).trim()==='') && (resultRaw == null || String(resultRaw).trim()==='')) continue;
+    const masterhotelid = hotelRaw == null ? '' : String(hotelRaw).trim();
+    const basicroomtypeid = basicRaw == null ? '' : String(basicRaw).trim();
+    let roomName;
+    try {
+      roomName = parseRoomNameCell(roomRaw);
+    } catch(e) {
+      throw new Error('第 ' + (i+1) + ' 行 roomname 解析失败：' + e.message);
+    }
+    let tokens;
+    try {
+      tokens = parseResultCell(resultRaw);
+    } catch(e) {
+      throw new Error('第 ' + (i+1) + ' 行 result 解析失败：' + e.message);
+    }
+    if (!tokens.length) continue;
+    const roomKey = masterhotelid + '|' + basicroomtypeid + '|' + roomName;
+    for (const t of tokens) {
+      rows.push({
+        masterhotelid,
+        basicroomtypeid,
+        roomName,
+        roomKey,
+        phrase: t.phrase,
+        category: t.category,
+        defect: t.defect,
+        defectType: t.defectType,
+      });
+      if (t.category) catSet.add(t.category);
+    }
+    roomKeySet.add(roomKey);
+  }
+  return { rows, rooms: roomKeySet.size, categories: catSet.size };
+}
+
+async function buildPayloadFromRaw(rows, hashSeed){
+  // group by hotel + basic room type + name (same name at different hotels stays distinct)
+  const byRoom = new Map();
+  for (const r of rows) {
+    const key = r.roomKey || (r.masterhotelid + '|' + r.basicroomtypeid + '|' + r.roomName);
+    if (!byRoom.has(key)) byRoom.set(key, []);
+    byRoom.get(key).push(r);
+  }
+  const roomKeys = Array.from(byRoom.keys());
+  const roomsOut = [];
+  let idx = 0;
+  for (const key of roomKeys) {
+    const list = byRoom.get(key);
+    const first = list[0];
+    const tokens = list.map((r, i) => ({
+      i,
+      phrase: r.phrase,
+      category: r.category || UNCATEGORIZED,
+      defect: !!r.defect,
+      defectType: r.defectType,
+    }));
+    roomsOut.push({
+      id: 'r' + String(idx).padStart(4,'0'),
+      name: first.roomName,
+      masterhotelid: first.masterhotelid || '',
+      basicroomtypeid: first.basicroomtypeid || '',
+      tokens,
+    });
+    idx++;
+  }
+  const hash = await sha1Hex(hashSeed + '|' + roomKeys.join('|'));
+  return {
+    generatedAt: new Date().toISOString().slice(0,19).replace('T',' '),
+    rooms: roomsOut,
+    payloadHash: hash,
+  };
+}
+
+function enterBoard(){
+  document.getElementById('importWizard').style.display = 'none';
+  document.getElementById('toolbar').style.display = 'flex';
+  document.getElementById('cards').style.display = 'block';
+  initBoard();
+  syncToolbarHeight();
+  window.addEventListener('resize', syncToolbarHeight);
+  // also re-measure when toolbar wraps (button text change etc.)
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(syncToolbarHeight);
+    ro.observe(document.getElementById('toolbar'));
+  }
+}
+
+function syncToolbarHeight(){
+  const tb = document.getElementById('toolbar');
+  if (!tb) return;
+  const h = tb.getBoundingClientRect().height;
+  document.documentElement.style.setProperty('--toolbar-h', h + 'px');
+}
+
+// ====== Board init (the original IIFE body) ======
+function initBoard(){
+  // category color: assign distinct hues from the loaded category set (golden-angle spacing)
+  function hash(s){ let h=0; for(let i=0;i<(s||'').length;i++){ h=(h*31 + s.charCodeAt(i))|0; } return h; }
+  function buildCatColorMap(cats){
+    const unique = Array.from(cats || []).filter(Boolean);
+    unique.sort((a,b)=>String(a).localeCompare(String(b), 'zh'));
+    const map = {};
+    const GOLDEN = 137.508;
+    unique.forEach((cat, i) => {
+      map[cat] = {
+        h: (i * GOLDEN) % 360,
+        s: 56 + (i % 4) * 5,   // 56–71
+        l: 36 + (i % 3) * 5,   // 36–46
+      };
+    });
+    return map;
+  }
+  const allCats = new Set(Object.keys(TAXO_BY_CAT || {}));
+  (DATA.rooms || []).forEach(r => (r.tokens || []).forEach(t => {
+    if (t.category) allCats.add(t.category);
+  }));
+  const CAT_COLOR_MAP = buildCatColorMap(allCats);
+  function catColor(cat){
+    const c = CAT_COLOR_MAP[cat];
+    if (c) return `hsl(${c.h.toFixed(1)} ${c.s}% ${c.l}%)`;
+    const h = Math.abs(hash(cat)) % 360;
+    return `hsl(${h} 55% 42%)`;
+  }
+  function catBgSoft(cat){
+    const c = CAT_COLOR_MAP[cat];
+    if (c) return `hsl(${c.h.toFixed(1)} 70% 90%)`;
+    const h = Math.abs(hash(cat)) % 360;
+    return `hsl(${h} 75% 90%)`;
+  }
+
+  // Suggested-classification options come solely from the taxonomy xlsx's "模型输出分类名称"
+  // column (TAXO_BY_CAT keys, deduplicated; the literal "defect" was already renamed to
+  // DEFECT_DISPLAY_NAME by buildTaxoIndices).
+  const suggestOpts = Object.keys(TAXO_BY_CAT || {});
+
+  // current room index
+  let curIdx = 0;
+  const savedIdx = parseInt(localStorage.getItem(IDX_KEY)||'0',10);
+  if (!isNaN(savedIdx) && savedIdx >= 0 && savedIdx < DATA.rooms.length) curIdx = savedIdx;
+  document.getElementById('totalIdx').textContent = DATA.rooms.length;
+
+  function getKey(roomId, ti){ return roomId+'__'+ti; }
+  let saveTimer;
+  function saveState(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=>{ localStorage.setItem(STATE_KEY, JSON.stringify(state)); }, SAVE_DEBOUNCE_MS);
+  }
+
+  function isRoomDone(room){
+    const rs = getRoomState(room.id) || {};
+    if (rs.phraseWrong) {
+      const hasEdit = (rs.newTokens && rs.newTokens.length>0) || (rs.deletedTokenIdx && rs.deletedTokenIdx.length>0);
+      if (hasEdit) return true;
+    }
+    return room.tokens.every(t => {
+      const s = state[getKey(room.id,t.i)];
+      return s && (s.mark==='ok' || s.mark==='ng');
+    });
+  }
+  // expose for stats / undone helpers
+  window._isRoomDone = isRoomDone;
+  window._getKey = getKey;
+  window._catColor = catColor;
+  window._catBgSoft = catBgSoft;
+
+  function displayCat(t){ return t.defect ? (t.category + '-' + DEFECT_DISPLAY_NAME) : t.category; }
+  function tooltipEntryFor(t){
+    if (t.defect) return DEFECT_BY_CAT[t.category] || DEFECT_FALLBACK || TAXO_BY_CAT[t.category] || null;
+    return TAXO_BY_CAT[t.category] || null;
+  }
+
+  // Searchable combobox: replaces the host element with [input + filterable menu].
+  // options: string[]; initial: string|null; onChange: (val)=>void
+  function mountCombo(host, options, initial, onChange, placeholder){
+    const wrap = document.createElement('span');
+    wrap.className = 'combo';
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.value = initial || '';
+    inp.placeholder = placeholder || '搜索分类…';
+    const menu = document.createElement('div');
+    menu.className = 'menu';
+    wrap.appendChild(inp);
+    wrap.appendChild(menu);
+    host.replaceWith(wrap);
+
+    let activeIdx = -1;
+    let filtered = options.slice();
+    function highlight(text, q){
+      if (!q) return escapeHtml(text);
+      const lower = text.toLowerCase();
+      const lq = q.toLowerCase();
+      const i = lower.indexOf(lq);
+      if (i < 0) return escapeHtml(text);
+      return escapeHtml(text.slice(0,i)) + '<span class="hl">' + escapeHtml(text.slice(i, i+q.length)) + '</span>' + escapeHtml(text.slice(i+q.length));
+    }
+    function renderMenu(){
+      const q = inp.value.trim();
+      const lq = q.toLowerCase();
+      filtered = q ? options.filter(o => o.toLowerCase().includes(lq)) : options.slice();
+      if (filtered.length === 0) {
+        menu.innerHTML = '<div class="menu-empty">无匹配结果</div>';
+      } else {
+        menu.innerHTML = filtered.map((o, i) => `<div class="menu-item${i===activeIdx?' active':''}" data-i="${i}">${highlight(o, q)}</div>`).join('');
+      }
+    }
+    function open(){ wrap.classList.add('open'); renderMenu(); }
+    function close(){ wrap.classList.remove('open'); activeIdx = -1; }
+    function commit(val){
+      inp.value = val;
+      onChange(val || null);
+      close();
+    }
+    inp.addEventListener('focus', open);
+    inp.addEventListener('input', ()=>{ activeIdx = -1; open(); });
+    inp.addEventListener('keydown', (e)=>{
+      if (e.key === 'ArrowDown'){ e.preventDefault(); open(); activeIdx = Math.min(filtered.length-1, activeIdx+1); renderMenu(); scrollActive(); }
+      else if (e.key === 'ArrowUp'){ e.preventDefault(); activeIdx = Math.max(0, activeIdx-1); renderMenu(); scrollActive(); }
+      else if (e.key === 'Enter'){
+        if (activeIdx >= 0 && filtered[activeIdx]) { e.preventDefault(); commit(filtered[activeIdx]); }
+        else if (filtered.length === 1) { e.preventDefault(); commit(filtered[0]); }
+      }
+      else if (e.key === 'Escape'){ close(); inp.blur(); }
+    });
+    function scrollActive(){
+      const el = menu.querySelector('.menu-item.active');
+      if (el) el.scrollIntoView({block:'nearest'});
+    }
+    menu.addEventListener('mousedown', (e)=>{
+      const item = e.target.closest('.menu-item');
+      if (!item) return;
+      e.preventDefault(); // keep focus
+      const i = parseInt(item.dataset.i,10);
+      if (!isNaN(i) && filtered[i]) commit(filtered[i]);
+    });
+    inp.addEventListener('blur', ()=>{
+      // If user typed something not in options, accept the literal text but still notify
+      setTimeout(()=>{
+        if (!wrap.contains(document.activeElement)) {
+          close();
+          // commit current input value (could be free-form)
+          const v = inp.value.trim();
+          // Only fire onChange if value differs from initial; we don't track that here, so always emit
+          onChange(v || null);
+        }
+      }, 50);
+    });
+    return wrap;
+  }
+
+  // render: build all cards but show only curIdx
+  const cardsEl = document.getElementById('cards');
+  function renderAll(){
+    cardsEl.innerHTML = '';
+    if (DATA.rooms.length === 0) {
+      cardsEl.innerHTML = '<div class="all-done">没有房型数据</div>';
+      return;
+    }
+    DATA.rooms.forEach((room, idx) => {
+      const card = renderRoom(room, idx);
+      cardsEl.appendChild(card);
+    });
+    showCurrent();
+    updateCounts();
+  }
+
+  function showCurrent(){
+    cardsEl.querySelectorAll('.card').forEach((el, i) => {
+      el.classList.toggle('hidden', i !== curIdx);
+    });
+    document.getElementById('curIdx').textContent = curIdx + 1;
+    localStorage.setItem(IDX_KEY, String(curIdx));
+    document.getElementById('prevBtn').disabled = curIdx === 0;
+    document.getElementById('nextBtn').disabled = curIdx === DATA.rooms.length - 1;
+    window.scrollTo({top:0, behavior:'smooth'});
+    hideTip();
+  }
+
+  function gotoNext(){
+    if (curIdx < DATA.rooms.length - 1) { curIdx++; showCurrent(); }
+    else { showAllDone(); }
+  }
+  function gotoPrev(){
+    if (curIdx > 0) { curIdx--; showCurrent(); }
+  }
+  function showAllDone(){
+    const done = DATA.rooms.every(isRoomDone);
+    if (done) {
+      cardsEl.innerHTML = '<div class="all-done">🎉 全部 ' + DATA.rooms.length + ' 条房型审核完成！点击 "📥 导出 xlsx" 或 "📄 导出 HTML" 提交结果。</div>';
+    }
+  }
+
+  function renderRoom(room, idx){
+    const card = document.createElement('section');
+    card.className = 'card hidden';
+    card.dataset.id = room.id;
+
+    const pw = document.createElement('div');
+    pw.className = 'pw-corner';
+    pw.textContent = '分词错';
+    card.appendChild(pw);
+
+    const titleEl = document.createElement('h2');
+    titleEl.className = 'room-title';
+    titleEl.appendChild(buildColoredTitle(room));
+    card.appendChild(titleEl);
+
+    const meta = document.createElement('div');
+    meta.className = 'room-meta';
+    const hotelId = room.masterhotelid != null ? String(room.masterhotelid).trim() : '';
+    const basicId = room.basicroomtypeid != null ? String(room.basicroomtypeid).trim() : '';
+    const hotelUrl = hotelId
+      ? `https://hotels.ctrip.com/hotels/detail/?hotelId=${encodeURIComponent(hotelId)}`
+      : '';
+    const hotelHtml = hotelId
+      ? `酒店 <a href="${hotelUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(hotelId)}</a>`
+      : 'masterhotelid —';
+    const basicHtml = basicId
+      ? `母基 <b style="color:#374151;font-weight:600;">${escapeHtml(basicId)}</b>`
+      : 'basicroomtypeid —';
+    meta.innerHTML = `${hotelHtml}<span class="meta-sep">·</span>${basicHtml}<span class="meta-sep">·</span>共 ${room.tokens.length} 个分词`;
+    card.appendChild(meta);
+
+    const rs = getRoomState(room.id) || {};
+    const flag = document.createElement('div');
+    flag.className = 'room-flag' + (rs.phraseWrong ? ' on' : '');
+    flag.innerHTML = `
+      <label class="toggle">
+        <input type="checkbox" class="pw-toggle" ${rs.phraseWrong?'checked':''}>
+        <span>⚠ 此房型分词整体有问题（需给出正确分词和分类）</span>
+      </label>
+    `;
+    if (rs.phraseWrong) card.classList.add('phrase-wrong');
+
+    card.appendChild(flag);
+
+    // new-token area (sibling of token-list)
+    const ntArea = document.createElement('div');
+    ntArea.className = 'new-token-area';
+    ntArea.style.display = rs.phraseWrong ? 'block' : 'none';
+    ntArea.innerHTML = `
+      <div class="nta-title">▾ 正确的分词（人工重切）</div>
+      <div class="token-list nt-list"></div>
+      <div class="empty-tip nt-empty" style="display:none;">暂无新分词，点击下方「➕ 添加分词」开始填写。</div>
+      <button type="button" class="add-nt-btn">➕ 添加分词</button>
+    `;
+    const ntList = ntArea.querySelector('.nt-list');
+    const ntEmpty = ntArea.querySelector('.nt-empty');
+    function refreshNtEmpty(){
+      const has = (getRoomState(room.id)||{}).newTokens && (getRoomState(room.id).newTokens.length>0);
+      ntEmpty.style.display = has ? 'none' : 'block';
+    }
+    function renderNtList(){
+      ntList.innerHTML = '';
+      const arr = ((getRoomState(room.id)||{}).newTokens) || [];
+      arr.forEach((nt, i) => ntList.appendChild(renderNewTokenRow(room, i)));
+      refreshNtEmpty();
+    }
+    flag.querySelector('.pw-toggle').onchange = (e)=>{
+      const cur = ensureRoomState(room.id);
+      const checked = !!e.target.checked;
+      cur.phraseWrong = checked;
+      if (!checked) {
+        cur.newTokens = [];
+        renderNtList();
+      }
+      saveState();
+      flag.classList.toggle('on', cur.phraseWrong);
+      card.classList.toggle('phrase-wrong', cur.phraseWrong);
+      ntArea.style.display = cur.phraseWrong ? 'block' : 'none';
+      updateCounts();
+    };
+    ntArea.querySelector('.add-nt-btn').onclick = ()=>{
+      const cur = ensureRoomState(room.id);
+      cur.newTokens = cur.newTokens || [];
+      cur.newTokens.push({phrase:'', category:'', remark:''});
+      saveState();
+      renderNtList();
+      const inputs = ntList.querySelectorAll('input.new-phrase');
+      if (inputs.length) inputs[inputs.length-1].focus();
+    };
+    card._renderNtList = renderNtList;
+    renderNtList();
+    card.appendChild(ntArea);
+
+    const list = document.createElement('div');
+    list.className = 'token-list';
+    room.tokens.forEach(t => list.appendChild(renderTokenRow(room, t)));
+    card.appendChild(list);
+
+    return card;
+  }
+
+  // Build colored title by slicing roomName into segments matching tokens in order.
+  function buildColoredTitle(room){
+    const wrap = document.createElement('span');
+    // Normalize for matching: lowercase + fold full-width punctuation/digits/letters to half-width.
+    // Crucially the original-case room.name is preserved for display; the normalized form is only
+    // used as a haystack/needle when locating where each phrase sits inside the name.
+    function fold(s){
+      if (!s) return '';
+      let out = '';
+      for (let i=0;i<s.length;i++){
+        const code = s.charCodeAt(i);
+        // Full-width ASCII (FF01–FF5E) → half-width (0021–007E)
+        if (code >= 0xFF01 && code <= 0xFF5E) out += String.fromCharCode(code - 0xFEE0);
+        // Ideographic space → ASCII space
+        else if (code === 0x3000) out += ' ';
+        else out += s[i];
+      }
+      return out.toLowerCase();
+    }
+    const foldedName = fold(room.name);
+    let pos = 0;
+    const segs = [];
+    for (const t of room.tokens) {
+      const phrase = t.phrase || '';
+      const idx = phrase ? foldedName.indexOf(fold(phrase), pos) : -1;
+      if (idx < 0) {
+        // can't find this phrase — skip it but keep what we already matched
+        // (handles duplicate tokens that the model emitted incorrectly)
+        break;
+      }
+      if (idx > pos) segs.push({text: room.name.slice(pos, idx), cat: null});
+      // slice from the original room.name so display preserves original case + width
+      segs.push({text: room.name.slice(idx, idx + phrase.length), cat: displayCat(t)});
+      pos = idx + phrase.length;
+    }
+    if (pos < room.name.length) segs.push({text: room.name.slice(pos), cat: null});
+    if (segs.length === 0) {
+      wrap.textContent = room.name;
+      return wrap;
+    }
+    segs.forEach(s => {
+      const sp = document.createElement('span');
+      sp.className = 'seg';
+      sp.textContent = s.text;
+      if (s.cat) {
+        sp.style.background = catBgSoft(s.cat);
+        sp.style.color = catColor(s.cat);
+        sp.title = s.cat;
+      }
+      wrap.appendChild(sp);
+    });
+    return wrap;
+  }
+
+  function isTokenDeleted(roomId, ti){
+    const rs = getRoomState(roomId);
+    if (!rs || !rs.deletedTokenIdx) return false;
+    return rs.deletedTokenIdx.indexOf(ti) >= 0;
+  }
+  function setTokenDeleted(roomId, ti, on){
+    const cur = ensureRoomState(roomId);
+    cur.deletedTokenIdx = cur.deletedTokenIdx || [];
+    const i = cur.deletedTokenIdx.indexOf(ti);
+    if (on && i < 0) cur.deletedTokenIdx.push(ti);
+    if (!on && i >= 0) cur.deletedTokenIdx.splice(i,1);
+    saveState();
+  }
+  function applyTokenVisual(row, room, t){
+    const k = getKey(room.id, t.i);
+    const s = state[k] || {};
+    const deleted = isTokenDeleted(room.id, t.i);
+    row.classList.toggle('ok', s.mark==='ok');
+    row.classList.toggle('ng', s.mark==='ng');
+    row.classList.toggle('deleted', deleted);
+    row.querySelector('.ok-btn').classList.toggle('active', s.mark==='ok');
+    row.querySelector('.ng-btn').classList.toggle('active', s.mark==='ng');
+    const delBtn = row.querySelector('.del-btn');
+    delBtn.textContent = deleted ? '↺' : '🗑';
+    delBtn.classList.toggle('active', deleted);
+  }
+
+  function renderTokenRow(room, t){
+    const row = document.createElement('div');
+    row.className = 'token-row';
+    const k = getKey(room.id, t.i);
+    const s = state[k] || {};
+    if (s.mark==='ok') row.classList.add('ok');
+    if (s.mark==='ng') row.classList.add('ng');
+    if (isTokenDeleted(room.id, t.i)) row.classList.add('deleted');
+    const dc = displayCat(t);
+    row.innerHTML = `
+      <span class="phrase">${escapeHtml(t.phrase)}</span>
+      <span class="badge" style="background:${catColor(dc)};">${escapeHtml(dc)}<span class="info" title="点击查看分类定义">i</span></span>
+      <span class="deleted-tag">已删</span>
+      <span class="grow"></span>
+      <span class="mark">
+        <button class="ok-btn ${s.mark==='ok'?'active':''}" title="标记为正确">✓</button>
+        <button class="ng-btn ${s.mark==='ng'?'active':''}" title="标记为错误">✗</button>
+      </span>
+      <button class="del-btn" title="软删除该系统分词">${isTokenDeleted(room.id,t.i)?'↺':'🗑'}</button>
+      <div class="detail">
+        <label>建议正确分类：
+          <span class="suggest-host"></span>
+        </label>
+        <textarea class="remark" placeholder="备注（原因 / 期望）" rows="1">${escapeHtml(s.remark||'')}</textarea>
+      </div>
+    `;
+    mountCombo(row.querySelector('.suggest-host'), suggestOpts, s.suggested || '', (val)=>{
+      const cur = state[k] || (state[k]={});
+      cur.suggested = val || null;
+      saveState();
+    }, '搜索建议分类…');
+    const okBtn = row.querySelector('.ok-btn');
+    const ngBtn = row.querySelector('.ng-btn');
+    okBtn.onclick = ()=>{
+      const cur = state[k] || (state[k]={});
+      const next = cur.mark === 'ok' ? null : 'ok';
+      cur.mark = next;
+      if (next) setTokenDeleted(room.id, t.i, false);
+      saveState();
+      applyTokenVisual(row, room, t);
+      updateCounts();
+    };
+    ngBtn.onclick = ()=>{
+      const cur = state[k] || (state[k]={});
+      const next = cur.mark === 'ng' ? null : 'ng';
+      cur.mark = next;
+      if (next) setTokenDeleted(room.id, t.i, false);
+      saveState();
+      applyTokenVisual(row, room, t);
+      updateCounts();
+    };
+    row.querySelector('.remark').oninput = (e)=>{
+      const cur = state[k] || (state[k]={});
+      cur.remark = e.target.value;
+      saveState();
+    };
+    row.querySelector('.del-btn').onclick = ()=>{
+      const nowDel = !isTokenDeleted(room.id, t.i);
+      setTokenDeleted(room.id, t.i, nowDel);
+      if (nowDel) {
+        const cur = state[k] || (state[k]={});
+        cur.mark = null;
+        saveState();
+      }
+      applyTokenVisual(row, room, t);
+      updateCounts();
+    };
+    const info = row.querySelector('.info');
+    info.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      toggleTip(info, dc, tooltipEntryFor(t));
+    });
+    return row;
+  }
+
+  function renderNewTokenRow(room, ntIdx){
+    const cur = ensureRoomState(room.id);
+    cur.newTokens = cur.newTokens || [];
+    const nt = cur.newTokens[ntIdx] || {phrase:'', category:'', remark:''};
+    const row = document.createElement('div');
+    row.className = 'token-row new';
+    row.innerHTML = `
+      <input type="text" class="new-phrase" placeholder="正确分词" value="${escapeHtml(nt.phrase||'')}">
+      <span class="new-cat-host"></span>
+      <span class="badge-color" style="background:${nt.category?catColor(nt.category):'#e5e7eb'};"></span>
+      <button type="button" class="info-btn" title="查看该分类定义">i</button>
+      <textarea class="new-remark" placeholder="备注（可选）" rows="1">${escapeHtml(nt.remark||'')}</textarea>
+      <button type="button" class="nt-remove" title="移除该新分词">×</button>
+    `;
+    const phraseEl = row.querySelector('.new-phrase');
+    const colorEl = row.querySelector('.badge-color');
+    const remarkEl = row.querySelector('.new-remark');
+    const infoEl = row.querySelector('.info-btn');
+    const removeEl = row.querySelector('.nt-remove');
+    let curCat = nt.category || '';
+    mountCombo(row.querySelector('.new-cat-host'), suggestOpts, curCat, (val)=>{
+      const arr = getRoomState(room.id).newTokens;
+      arr[ntIdx].category = val || '';
+      curCat = val || '';
+      colorEl.style.background = val ? catColor(val) : '#e5e7eb';
+      saveState();
+    }, '搜索分类…');
+    phraseEl.oninput = (e)=>{
+      const arr = getRoomState(room.id).newTokens;
+      arr[ntIdx].phrase = e.target.value;
+      saveState();
+    };
+    remarkEl.oninput = (e)=>{
+      const arr = getRoomState(room.id).newTokens;
+      arr[ntIdx].remark = e.target.value;
+      saveState();
+    };
+    infoEl.onclick = (e)=>{
+      e.stopPropagation();
+      if (!curCat) { alert('请先选择一个分类'); return; }
+      // for new tokens, use TAXO_BY_CAT directly
+      toggleTip(infoEl, curCat, TAXO_BY_CAT[curCat] || null);
+    };
+    removeEl.onclick = ()=>{
+      const arr = getRoomState(room.id).newTokens;
+      arr.splice(ntIdx, 1);
+      saveState();
+      const card = document.querySelector(`[data-id="${room.id}"]`);
+      if (card && card._renderNtList) card._renderNtList();
+    };
+    return row;
+  }
+
+  function updateCounts(){
+    let total = DATA.rooms.length, done = 0;
+    DATA.rooms.forEach(room => { if (isRoomDone(room)) done++; });
+    const stRoomDone = document.getElementById('stRoomDone');
+    const stRoomTotal = document.getElementById('stRoomTotal');
+    if (stRoomDone) stRoomDone.textContent = done;
+    if (stRoomTotal) stRoomTotal.textContent = total;
+  }
+
+  // tooltip — click only, dual tabs
+  const tip = document.getElementById('tip');
+  let tipAnchor = null;
+  let tipActiveTab = 'def';
+  function toggleTip(anchor, cat, entry){
+    if (tipAnchor === anchor && tip.classList.contains('is-open')) { hideTip(); return; }
+    tipActiveTab = 'def';
+    showTip(anchor, cat, entry);
+  }
+  function renderAllowBlock(t){
+    const allowRaw = (t['中文房型名称是否允许填写']||'').trim();
+    const isAllow = allowRaw === '√' || allowRaw === '是';
+    const isDisallow = allowRaw === '×' || allowRaw === '否';
+    if (isAllow) return `<div class="block allow"><div class="lbl">✅ 中文房型允许填写</div></div>`;
+    if (isDisallow) return `<div class="block allow no"><div class="lbl">❌ 中文房型不允许填写</div></div>`;
+    return `<div class="block allow"><div class="lbl">ℹ️ 中文房型允许填写</div><div class="body">${escapeHtml(allowRaw||'（未标注）')}</div></div>`;
+  }
+  function renderTagBlock(t){
+    const raw = (t['是否为标签词']||'').trim();
+    if (!raw) return '';
+    const yes = raw === '√' || raw === '是' || raw.toLowerCase() === 'true' || raw === '1';
+    const no = raw === '×' || raw === '否' || raw.toLowerCase() === 'false' || raw === '0';
+    if (yes) return `<div class="block tag"><div class="lbl">🏷 标签词：是</div></div>`;
+    if (no) return `<div class="block tag"><div class="lbl">🏷 标签词：否</div></div>`;
+    return `<div class="block tag"><div class="lbl">🏷 是否为标签词</div><div class="body">${escapeHtml(raw)}</div></div>`;
+  }
+  function getRulesList(t){
+    if (!t) return [];
+    if (Array.isArray(t.rules) && t.rules.length) return t.rules;
+    // backward compat: single flat rule fields
+    if (t._hasRules && (t['子类规则'] || t['规则举例'] || t['对应运营审核类型'] || t['对应运营审核大类'])) {
+      return [{
+        '子类规则': t['子类规则'],
+        '规则举例': t['规则举例'],
+        '中文房型名称是否允许填写': t['中文房型名称是否允许填写'],
+        '是否为标签词': t['是否为标签词'],
+        '对应运营审核类型': t['对应运营审核类型'] || t['对应运营审核大类'] || t['对应审核大类'] || '',
+      }];
+    }
+    return [];
+  }
+  function renderRuleCard(rule){
+    const ops = rule['对应运营审核类型'] || rule['对应运营审核大类'] || rule['对应审核大类'] || '';
+    return `
+      <div class="rule-card">
+        <div class="block rule"><div class="lbl">📋 子类规则</div><div class="body">${escapeHtml(rule['子类规则']||'（无）')}</div></div>
+        <div class="block ex"><div class="lbl">举例</div><div class="body">${escapeHtml(rule['规则举例']||'（无）')}</div></div>
+        ${renderAllowBlock(rule)}
+        ${renderTagBlock(rule)}
+        ${ops ? `<div class="block" style="font-style:italic;color:#a7f3d0;"><div class="lbl" style="color:#a7f3d0;">📌 对应运营审核类型</div><div class="body">${escapeHtml(ops)}</div></div>` : ''}
+      </div>
+    `;
+  }
+  function renderRulesHorizontal(rules){
+    if (rules.length === 1) {
+      return renderRuleCard(rules[0]);
+    }
+    const pills = rules.map((_, i) =>
+      `<button type="button" class="rule-pill ${i===0?'active':''}" data-rule-idx="${i}">规则${i+1}</button>`
+    ).join('');
+    const panes = rules.map((rule, i) =>
+      `<div class="rule-pane ${i===0?'active':''}" data-rule-pane="${i}">${renderRuleCard(rule)}</div>`
+    ).join('');
+    return `
+      <div class="rules-count">共 ${rules.length} 条规则</div>
+      <div class="rule-pills">${pills}</div>
+      <div class="rule-panes">${panes}</div>
+    `;
+  }
+  function showTip(anchor, cat, entry){
+    const t = entry;
+    if (!t) {
+      tip.innerHTML = `<h4>${escapeHtml(cat)}</h4><div class="tip-empty">未找到该分类的定义。</div>`;
+    } else {
+      const crumbs = [t['大类'], t['一级子类'], (t['二级子类'] && t['二级子类']!=='/') ? t['二级子类'] : null].filter(Boolean).join(' › ');
+      let rulesBody;
+      if (!RULES_LOADED) {
+        rulesBody = `<div class="tip-empty">未导入名称治理规则</div>`;
+      } else {
+        const rules = getRulesList(t);
+        if (!rules.length) {
+          rulesBody = `<div class="tip-empty">该分类暂无治理规则</div>`;
+        } else {
+          rulesBody = renderRulesHorizontal(rules);
+        }
+      }
+      tip.innerHTML = `
+        <h4>${escapeHtml(cat)}</h4>
+        ${crumbs ? `<div class="breadcrumb">${escapeHtml(crumbs)}</div>` : ''}
+        <div class="tip-tabs">
+          <button type="button" class="tip-tab ${tipActiveTab==='def'?'active':''}" data-tab="def">分类定义</button>
+          <button type="button" class="tip-tab ${tipActiveTab==='rule'?'active':''}" data-tab="rule">治理规则</button>
+        </div>
+        <div class="tip-panels">
+          <div class="tip-panel ${tipActiveTab==='def'?'active':''}" data-panel="def">
+            <div class="block def"><div class="lbl">📖 定义</div><div class="body">${escapeHtml(t['定义']||'（无）')}</div></div>
+            <div class="block ex"><div class="lbl">举例</div><div class="body">${escapeHtml(t['举例']||'（无）')}</div></div>
+          </div>
+          <div class="tip-panel ${tipActiveTab==='rule'?'active':''}" data-panel="rule">
+            ${rulesBody}
+          </div>
+        </div>
+      `;
+      tip.querySelectorAll('.tip-tab').forEach(btn => {
+        btn.onclick = (ev) => {
+          ev.stopPropagation();
+          tipActiveTab = btn.dataset.tab;
+          tip.querySelectorAll('.tip-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tipActiveTab));
+          tip.querySelectorAll('.tip-panel').forEach(p => p.classList.toggle('active', p.dataset.panel === tipActiveTab));
+          positionTip(anchor);
+        };
+      });
+      tip.querySelectorAll('.rule-pill').forEach(btn => {
+        btn.onclick = (ev) => {
+          ev.stopPropagation();
+          const idx = btn.dataset.ruleIdx;
+          tip.querySelectorAll('.rule-pill').forEach(b => b.classList.toggle('active', b.dataset.ruleIdx === idx));
+          tip.querySelectorAll('.rule-pane').forEach(p => p.classList.toggle('active', p.dataset.rulePane === idx));
+          positionTip(anchor);
+        };
+      });
+    }
+    tipAnchor = anchor;
+    tip.classList.add('is-open');
+    tip.style.display = 'flex';
+    positionTip(anchor);
+  }
+  function positionTip(anchor){
+    if (!anchor || !tip.classList.contains('is-open')) return;
+    const margin = 8;
+    const gap = 10;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const maxH = Math.max(160, vh - margin * 2);
+    tip.style.height = 'auto';
+    tip.style.maxHeight = maxH + 'px';
+    tip.style.top = margin + 'px';
+    tip.style.left = margin + 'px';
+    // force layout, then lock height if content exceeds viewport
+    let tipRect = tip.getBoundingClientRect();
+    if (tipRect.height >= maxH - 1) {
+      tip.style.height = maxH + 'px';
+      tipRect = tip.getBoundingClientRect();
+    }
+    const rect = anchor.getBoundingClientRect();
+    const spaceAbove = rect.top - margin;
+    const spaceBelow = vh - rect.bottom - margin;
+    let placeBelow = false;
+    if (tipRect.height + gap <= spaceAbove) {
+      placeBelow = false;
+    } else if (tipRect.height + gap <= spaceBelow) {
+      placeBelow = true;
+    } else {
+      placeBelow = spaceBelow >= spaceAbove;
+    }
+    let top = placeBelow ? (rect.bottom + gap) : (rect.top - tipRect.height - gap);
+    let left = rect.left + rect.width / 2 - tipRect.width / 2;
+    left = Math.max(margin, Math.min(left, vw - tipRect.width - margin));
+    top = Math.max(margin, Math.min(top, vh - tipRect.height - margin));
+    tip.style.top = top + 'px';
+    tip.style.left = left + 'px';
+  }
+  function hideTip(){
+    tip.style.display = 'none';
+    tip.classList.remove('is-open');
+    tipAnchor = null;
+  }
+  window.addEventListener('resize', ()=>{ if (tipAnchor) positionTip(tipAnchor); });
+  window.addEventListener('scroll', ()=>{ if (tipAnchor) positionTip(tipAnchor); }, true);
+  document.addEventListener('click', (e)=>{
+    if (e.target.closest('.info') || e.target.closest('.info-btn')) return;
+    if (!e.target.closest('#tip')) hideTip();
+  });
+  document.addEventListener('keydown', (e)=>{
+    if (e.key==='Escape') { hideTip(); return; }
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+    if (e.key==='ArrowLeft') { gotoPrev(); }
+    if (e.key==='ArrowRight') { gotoNext(); }
+  });
+
+  // nav buttons
+  document.getElementById('prevBtn').onclick = gotoPrev;
+  document.getElementById('nextBtn').onclick = gotoNext;
+
+  // search → in list mode: filter inline; in cards mode: jump to first match
+  document.getElementById('search').addEventListener('input', (e)=>{
+    if (listMode) { renderListView(); return; }
+    const q = e.target.value.trim().toLowerCase();
+    if (!q) return;
+    const idx = DATA.rooms.findIndex(r => r.name.toLowerCase().includes(q) || r.tokens.some(t=>t.phrase.toLowerCase().includes(q)));
+    if (idx >= 0 && idx !== curIdx) { curIdx = idx; showCurrent(); }
+  });
+
+  window.markCurrentAllOk = function(){
+    const room = DATA.rooms[curIdx];
+    if (!room) return;
+    room.tokens.forEach(t=>{
+      const k = getKey(room.id, t.i);
+      const cur = state[k] || (state[k]={});
+      if (!cur.mark) cur.mark = 'ok';
+    });
+    saveState();
+    renderAll();
+  };
+
+  window.gotoUndone = function(){
+    const n = DATA.rooms.length;
+    for (let off=1; off<=n; off++){
+      const i = (curIdx+off) % n;
+      if (!isRoomDone(DATA.rooms[i])) { curIdx = i; showCurrent(); return; }
+    }
+    alert('全部房型已完成 🎉');
+  };
+
+  // ----- List view -----
+  let listMode = false;
+  let statsMode = false;
+  let listFilter = 'all';
+  const listView = document.getElementById('listView');
+  const statsView = document.getElementById('statsView');
+  const listGrid = document.getElementById('listGrid');
+
+  function getRoomListMeta(room){
+    const rs = getRoomState(room.id) || {};
+    let ngN = 0;
+    room.tokens.forEach(t => {
+      const s = state[getKey(room.id, t.i)];
+      if (s && s.mark === 'ng') ngN++;
+    });
+    return { phraseWrong: !!rs.phraseWrong, catWrong: ngN > 0, ngN };
+  }
+
+  function updateListFilterCounts(){
+    const total = DATA.rooms.length;
+    let pw = 0, cw = 0;
+    DATA.rooms.forEach(room => {
+      const m = getRoomListMeta(room);
+      if (m.phraseWrong) pw++;
+      if (m.catWrong) cw++;
+    });
+    const elAll = document.getElementById('listCntAll');
+    const elPw = document.getElementById('listCntPhraseWrong');
+    const elCw = document.getElementById('listCntCatWrong');
+    if (elAll) elAll.textContent = String(total);
+    if (elPw) elPw.textContent = String(pw);
+    if (elCw) elCw.textContent = String(cw);
+  }
+
+  function renderListView(){
+    listGrid.innerHTML = '';
+    updateListFilterCounts();
+    const q = (document.getElementById('search').value || '').trim().toLowerCase();
+    let poolTotal = 0;
+    DATA.rooms.forEach(room => {
+      const m = getRoomListMeta(room);
+      if (listFilter === 'phraseWrong' && !m.phraseWrong) return;
+      if (listFilter === 'catWrong' && !m.catWrong) return;
+      poolTotal++;
+    });
+    let shown = 0;
+    DATA.rooms.forEach((room, idx) => {
+      const m = getRoomListMeta(room);
+      if (listFilter === 'phraseWrong' && !m.phraseWrong) return;
+      if (listFilter === 'catWrong' && !m.catWrong) return;
+      if (q) {
+        const hit = room.name.toLowerCase().includes(q) || room.tokens.some(t => (t.phrase||'').toLowerCase().includes(q));
+        if (!hit) return;
+      }
+      shown++;
+      const rs = getRoomState(room.id) || {};
+      const totalTok = room.tokens.length;
+      let okN = 0, ngN = m.ngN;
+      room.tokens.forEach(t => {
+        const s = state[getKey(room.id, t.i)];
+        if (s && s.mark==='ok') okN++;
+      });
+      const done = okN + ngN;
+      const item = document.createElement('div');
+      item.className = 'list-item' + (idx===curIdx ? ' current':'');
+      const titleSpan = document.createElement('span');
+      titleSpan.className = 'name';
+      titleSpan.appendChild(buildColoredTitle(room));
+      const idxEl = document.createElement('span');
+      idxEl.className = 'idx';
+      idxEl.textContent = '#' + (idx+1);
+      const badges = document.createElement('span');
+      badges.className = 'badges';
+      let html = '';
+      if (rs.phraseWrong) html += '<span class="pill pw">分词错</span>';
+      if (ngN > 0) html += `<span class="pill ng">分类错 ${ngN}</span>`;
+      if (isRoomDone(room)) html += '<span class="pill done">已完成</span>';
+      else if (done > 0) html += `<span class="pill todo">${done}/${totalTok}</span>`;
+      else html += '<span class="pill todo">未审</span>';
+      badges.innerHTML = html;
+      item.appendChild(idxEl);
+      item.appendChild(titleSpan);
+      item.appendChild(badges);
+      item.onclick = ()=>{
+        curIdx = idx;
+        toggleListView(false);
+        showCurrent();
+      };
+      listGrid.appendChild(item);
+    });
+    const hint = document.getElementById('listCountHint');
+    const filterLabel = listFilter === 'phraseWrong' ? '分词错' : (listFilter === 'catWrong' ? '分类错' : '');
+    if (q && shown === 0) {
+      listGrid.innerHTML = `<div style="padding:24px;text-align:center;color:#9ca3af;">没有匹配的房型${filterLabel ? `（${filterLabel}）` : ''}</div>`;
+    }
+    const header = document.querySelector('#listView h2');
+    if (header) {
+      if (q) {
+        header.textContent = filterLabel
+          ? `📋 房型列表 · ${filterLabel} · 命中 ${shown} / ${poolTotal}（搜索「${q}」）`
+          : `📋 全部房型一览 · 命中 ${shown} / ${DATA.rooms.length}（搜索「${q}」）`;
+      } else if (filterLabel) {
+        header.textContent = `📋 房型列表 · ${filterLabel} · ${shown} / ${DATA.rooms.length}（点击任意条进入详情）`;
+      } else {
+        header.textContent = '📋 全部房型一览（点击任意条进入详情）';
+      }
+    }
+    if (hint) {
+      hint.textContent = filterLabel
+        ? `当前筛选：${filterLabel}，共 ${poolTotal} 个房型`
+        : `共 ${DATA.rooms.length} 个房型`;
+    }
+  }
+  window.toggleListView = function(force){
+    listMode = (typeof force === 'boolean') ? force : !listMode;
+    const cardsMain = document.getElementById('cards');
+    if (listMode) {
+      if (statsMode) toggleStatsView(false);
+      renderListView();
+      cardsMain.style.display = 'none';
+      listView.classList.add('active');
+      document.getElementById('listViewBtn').textContent = '✕ 关闭列表';
+      hideTip();
+    } else {
+      cardsMain.style.display = '';
+      listView.classList.remove('active');
+      document.getElementById('listViewBtn').textContent = '📋 房型列表';
+    }
+  };
+
+  // ----- Stats view -----
+  let statsFilter = 'all';
+  function computePhraseStats(){
+    // (phrase) -> {model: {cat: count}, manual: {cat: count}, total: int, catWrong: bool}
+    const byPhrase = new Map();
+    function ensure(p){
+      if (!byPhrase.has(p)) byPhrase.set(p, {phrase:p, model:{}, manual:{}, total:0, catWrong:false});
+      return byPhrase.get(p);
+    }
+    DATA.rooms.forEach(room => {
+      const rs = getRoomState(room.id) || {};
+      const deletedSet = new Set(rs.deletedTokenIdx || []);
+      room.tokens.forEach(t => {
+        const e = ensure(t.phrase);
+        const modelCat = displayCat(t);
+        e.model[modelCat] = (e.model[modelCat]||0) + 1;
+        e.total += 1;
+        const s = state[getKey(room.id, t.i)] || {};
+        if (deletedSet.has(t.i)) {
+          e.manual[SOFT_DELETED_LABEL] = (e.manual[SOFT_DELETED_LABEL]||0) + 1;
+        } else if (s.mark === 'ok') {
+          e.manual[modelCat] = (e.manual[modelCat]||0) + 1;
+        } else if (s.mark === 'ng' && s.suggested) {
+          e.manual[s.suggested] = (e.manual[s.suggested]||0) + 1;
+          if (s.suggested !== modelCat) e.catWrong = true;
+        } else if (s.mark === 'ng') {
+          e.catWrong = true;
+        }
+        // unmarked: not counted in manual yet
+      });
+      (rs.newTokens || []).forEach(nt => {
+        if (!nt.phrase) return;
+        const e = ensure(nt.phrase);
+        const cat = nt.category || '（未选分类）';
+        e.manual[cat] = (e.manual[cat]||0) + 1;
+      });
+    });
+    byPhrase.forEach(e => {
+      if (Object.keys(e.model).length === 0 && Object.keys(e.manual).some(c => c !== SOFT_DELETED_LABEL)) {
+        e.catWrong = true;
+      }
+    });
+    return Array.from(byPhrase.values()).sort((a,b) => (b.total - a.total) || a.phrase.localeCompare(b.phrase));
+  }
+
+  function isMultiCat(stats){ return Object.keys(stats.model).length >= 2; }
+  function isWrong(stats){ return stats.catWrong; }
+
+  function getCatWrongExportRows(){
+    return computePhraseStats().filter(isWrong).map(r => {
+      const manualCats = Object.keys(r.manual).filter(c => c !== SOFT_DELETED_LABEL).sort();
+      return {
+        '分词': r.phrase,
+        '人工验收分类': manualCats.length ? manualCats.join('、') : '—',
+      };
+    });
+  }
+
+  function renderStatsView(){
+    // KPI numbers
+    let tokenTotal = 0, tokenCorrect = 0, tokenWrong = 0;
+    let roomTotal = DATA.rooms.length, roomCatAllOk = 0, roomCatAnyNg = 0;
+    let roomPhraseWrong = 0, roomPhraseAllOk = 0;
+    DATA.rooms.forEach(room => {
+      const rs = getRoomState(room.id) || {};
+      const deletedSet = new Set(rs.deletedTokenIdx || []);
+      let allReviewed = true;
+      room.tokens.forEach(t => {
+        tokenTotal += 1;
+        const s = state[getKey(room.id, t.i)] || {};
+        if (s.mark === 'ok') tokenCorrect += 1;
+        else if (s.mark === 'ng') tokenWrong += 1;
+        else if (!deletedSet.has(t.i)) allReviewed = false;
+      });
+      // 房型维度：仅统计打标「分类有误」(mark==='ng') 的房型
+      const roomCatNg = room.tokens.some(t => (state[getKey(room.id, t.i)] || {}).mark === 'ng');
+      if (roomCatNg) roomCatAnyNg += 1;
+      else roomCatAllOk += 1;
+      if (rs.phraseWrong) roomPhraseWrong += 1;
+      else if (allReviewed) roomPhraseAllOk += 1;
+    });
+    const kpi = document.getElementById('kpiCards');
+    function pct(a,b){ return b===0? '0%' : (Math.round(a/b*1000)/10) + '%'; }
+    kpi.innerHTML = `
+      <div class="kpi-card"><div class="kpi-title">分类（按分词维度）</div>
+        <div class="kpi-main">${tokenWrong} <span class="kpi-pct">个错误</span></div>
+        <div class="kpi-sub">全对 / 总计：<b>${tokenCorrect}</b> / <b>${tokenTotal}</b> <span class="kpi-pct">${pct(tokenCorrect,tokenTotal)}</span></div>
+      </div>
+      <div class="kpi-card"><div class="kpi-title">分类（按房型维度）</div>
+        <div class="kpi-main">${roomCatAnyNg} <span class="kpi-pct">个房型有错</span></div>
+        <div class="kpi-sub">全对 / 总计：<b>${roomCatAllOk}</b> / <b>${roomTotal}</b> <span class="kpi-pct">${pct(roomCatAllOk,roomTotal)}</span></div>
+      </div>
+      <div class="kpi-card"><div class="kpi-title">分词（按房型维度）</div>
+        <div class="kpi-main">${roomPhraseWrong} <span class="kpi-pct">个分词错</span></div>
+        <div class="kpi-sub">全对 / 总计：<b>${roomPhraseAllOk}</b> / <b>${roomTotal}</b> <span class="kpi-pct">${pct(roomPhraseAllOk,roomTotal)}</span></div>
+      </div>
+    `;
+
+    // phrase table
+    const all = computePhraseStats();
+    const totalCount = all.length;
+    const multi = all.filter(isMultiCat);
+    const wrong = all.filter(isWrong);
+    document.getElementById('cntAll').textContent = `${totalCount}/${totalCount}`;
+    document.getElementById('cntMulti').textContent = `${multi.length}/${totalCount}`;
+    document.getElementById('cntWrong').textContent = `${wrong.length}/${totalCount}`;
+    let rows = all;
+    if (statsFilter === 'multi') rows = multi;
+    else if (statsFilter === 'wrong') rows = wrong;
+    document.getElementById('phraseCountHint').textContent = `共 ${totalCount} 个不同分词，当前显示 ${rows.length} 个`;
+    const tbody = document.querySelector('#phraseTable tbody');
+    function fmtCounts(map){
+      const entries = Object.entries(map).sort((a,b)=>b[1]-a[1]);
+      if (!entries.length) return '<span style="color:#9ca3af;">—</span>';
+      return entries.map(([cat, cnt]) => {
+        const cls = cat===SOFT_DELETED_LABEL ? 'cat-tag deleted' : 'cat-tag';
+        const bg = cat===SOFT_DELETED_LABEL ? '#9ca3af' : catColor(cat);
+        return `<span class="${cls}" style="background:${bg};">${escapeHtml(cat)} ${cnt}次</span>`;
+      }).join('');
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td class="phrase-cell">${escapeHtml(r.phrase)}<div style="font-size:11px;color:#9ca3af;font-weight:normal;">共出现 ${r.total} 次</div></td>
+        <td>${fmtCounts(r.model)}</td>
+        <td>${fmtCounts(r.manual)}</td>
+      </tr>
+    `).join('') || '<tr><td colspan="3" style="text-align:center;color:#9ca3af;padding:24px;">暂无数据</td></tr>';
+  }
+
+  document.querySelectorAll('#listView .filter-pill').forEach(btn => {
+    btn.onclick = ()=>{
+      document.querySelectorAll('#listView .filter-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      listFilter = btn.dataset.listFilter || 'all';
+      renderListView();
+    };
+  });
+
+  document.querySelectorAll('#statsView .filter-pill').forEach(btn => {
+    btn.onclick = ()=>{
+      document.querySelectorAll('#statsView .filter-pill').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      statsFilter = btn.dataset.filter;
+      renderStatsView();
+    };
+  });
+
+  window.toggleStatsView = function(force){
+    statsMode = (typeof force === 'boolean') ? force : !statsMode;
+    const cardsMain = document.getElementById('cards');
+    if (statsMode) {
+      if (listMode) toggleListView(false);
+      renderStatsView();
+      cardsMain.style.display = 'none';
+      statsView.classList.add('active');
+      document.getElementById('statsViewBtn').textContent = '✕ 关闭统计';
+      hideTip();
+    } else {
+      cardsMain.style.display = '';
+      statsView.classList.remove('active');
+      document.getElementById('statsViewBtn').textContent = '📊 数据统计';
+    }
+  };
+
+  window.clearLocal = function(){
+    if (!confirm('确认清空本地全部审核记录？')) return;
+    state = {}; localStorage.setItem(STATE_KEY,'{}'); curIdx = 0; localStorage.setItem(IDX_KEY,'0'); renderAll();
+    if (statsMode) renderStatsView();
+  };
+
+  function isDefectCategory(cat){
+    if (!cat) return false;
+    if (cat === DEFECT_DISPLAY_NAME || cat === DEFECT_RAW_KEY) return true;
+    if (DEFECT_BY_CAT[cat]) return true;
+    const e = TAXO_BY_CAT[cat];
+    return !!(e && e['大类'] && DEFECT_GROUP_REGEX.test(e['大类']));
+  }
+
+  function defectFieldsForCategory(cat, prevDefectType){
+    if (isDefectCategory(cat)) {
+      return { defect: true, defectType: (prevDefectType != null && String(prevDefectType).trim() !== '') ? String(prevDefectType) : '' };
+    }
+    return { defect: false, defectType: '' };
+  }
+
+  function buildConfirmedResultTokens(room){
+    const rs = getRoomState(room.id) || {};
+    const deletedSet = new Set(rs.deletedTokenIdx || []);
+    const newTokens = rs.newTokens || [];
+    const items = [];
+    room.tokens.forEach(t => {
+      if (deletedSet.has(t.i)) return;
+      const idx = room.name.indexOf(t.phrase);
+      items.push({type:'orig', t, pos: idx<0 ? Infinity : idx, ord: items.length});
+    });
+    newTokens.forEach((nt, i) => {
+      const phrase = (nt.phrase || '').trim();
+      if (!phrase) return;
+      const idx = room.name.indexOf(phrase);
+      items.push({type:'new', nt, pos: idx<0 ? Infinity : idx, ord: room.tokens.length + i});
+    });
+    items.sort((a,b)=>{
+      if (a.pos !== b.pos) return a.pos - b.pos;
+      return a.ord - b.ord;
+    });
+    return items.map(item => {
+      if (item.type === 'orig') {
+        const t = item.t;
+        const s = state[getKey(room.id, t.i)] || {};
+        let cat = t.category || '';
+        let df;
+        if (s.mark === 'ng' && s.suggested && String(s.suggested).trim()) {
+          cat = String(s.suggested).trim();
+          df = defectFieldsForCategory(cat, t.defectType);
+        } else {
+          df = { defect: !!t.defect, defectType: t.defectType == null ? '' : String(t.defectType) };
+        }
+        return {
+          '分词结果': t.phrase || '',
+          '类别': cat,
+          '是否房型缺陷': df.defect,
+          '缺陷类型': df.defectType,
+        };
+      }
+      const nt = item.nt;
+      const cat = (nt.category || '').trim();
+      const df = defectFieldsForCategory(cat, '');
+      return {
+        '分词结果': (nt.phrase || '').trim(),
+        '类别': cat,
+        '是否房型缺陷': df.defect,
+        '缺陷类型': df.defectType,
+      };
+    });
+  }
+
+  window.exportXlsx = function(){
+    const rows = DATA.rooms.map(room => {
+      const tokens = buildConfirmedResultTokens(room);
+      return {
+        masterhotelid: room.masterhotelid || '',
+        basicroomtypeid: room.basicroomtypeid || '',
+        roomname: JSON.stringify([{
+          '房型名称': room.name,
+          '参考分词': '',
+          '参考分类': '',
+        }]),
+        result: JSON.stringify([tokens]),
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(rows.length ? rows : [{masterhotelid:'', basicroomtypeid:'', roomname:'', result:''}]);
+    ws['!cols'] = [{wch:14},{wch:16},{wch:48},{wch:80}];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, '验收结果');
+    const catWrongRows = getCatWrongExportRows();
+    const wsCatWrong = XLSX.utils.json_to_sheet(catWrongRows.length ? catWrongRows : [{'分词':'','人工验收分类':''}]);
+    wsCatWrong['!cols'] = [{wch:20},{wch:24}];
+    XLSX.utils.book_append_sheet(wb, wsCatWrong, '分类错误');
+    XLSX.writeFile(wb, `房型分词验收_${timestampSlug()}.xlsx`);
+  };
+  window.exportHtml = function(){
+    const payload = {
+      generatedAt: DATA.generatedAt,
+      rooms: DATA.rooms,
+      payloadHash: DATA.payloadHash,
+      taxonomy: TAXO_BY_CAT,
+      defectByCat: DEFECT_BY_CAT,
+      rulesLoaded: RULES_LOADED,
+    };
+    downloadSnapshotHtml(buildSnapshotHtmlString(payload, state), `房型分词验收_快照_${timestampSlug()}.html`);
+  };
+
+  renderAll();
+}
+
+// ----- Helpers -----
+function escapeHtml(s){ if (s==null) return ''; return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":"&#39;"}[c])); }
+
+function buildSnapshotHtmlString(dataPayload, statePayload){
+  const docEl = document.documentElement.cloneNode(true);
+  const dataNode = docEl.querySelector('#__DATA__');
+  if (dataNode) {
+    dataNode.textContent = JSON.stringify({
+      generatedAt: dataPayload.generatedAt,
+      rooms: dataPayload.rooms,
+      payloadHash: dataPayload.payloadHash,
+      taxonomy: dataPayload.taxonomy || {},
+      defectByCat: dataPayload.defectByCat || {},
+    });
+  }
+  const snap = docEl.querySelector('#__STATE_SNAPSHOT__');
+  if (snap) snap.textContent = JSON.stringify(statePayload);
+  return '<!doctype html>\n' + docEl.outerHTML;
+}
+
+function downloadSnapshotHtml(html, fname){
+  const blob = new Blob([html], {type:'text/html;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = fname;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+</script>
+</body>
+</html>
